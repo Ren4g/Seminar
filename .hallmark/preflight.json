@@ -1,0 +1,23 @@
+﻿{
+    "scanned":  "2026-11-10",
+    "findings":  {
+                     "framework":  "React 19 + Vite 8 (web/package.json)",
+                     "fonts":  "Example uses DM Sans and Manrope; web now loads those same font faces",
+                     "palette":  "Example uses green, lime and warm neutrals (Example/styles.css :1-15); web styles replaced teal/coral palette",
+                     "motion":  "CSS only; reduced-motion rule retained (web/src/styles.css)",
+                     "spacing":  "Existing 4px spacing rhythm preserved and regularized",
+                     "reference":  "Example visitor experience and style sheet"
+                 },
+    "preserve":  [
+                     "visitor audio route and query parameters",
+                     "content studio workflows and API calls",
+                     "anonymous listening history and analytics events",
+                     "existing audio guide wordmark"
+                 ],
+    "introduce":  [
+                      "visitor landing at / and /visitor",
+                      "/admin entry to content studio",
+                      "Example inspired green, lime and warm neutral theme",
+                      "responsive live POI discovery list"
+                  ]
+}

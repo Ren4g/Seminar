@@ -1,0 +1,36 @@
+﻿[
+    {
+        "mode":  "redesign",
+        "depth":  "full",
+        "scope":  "site",
+        "date":  "2026-11-10",
+        "theme":  "DiDau reference (by request)",
+        "shape":  "Stage",
+        "axes":  [
+                     "green grounded palette",
+                     "visitor first",
+                     "live content in the hero"
+                 ],
+        "hero":  "visitor invitation and live POI list",
+        "nav":  "wordmark, discovery, studio access and language",
+        "footer":  "wordmark and visitor prompt",
+        "imagery":  "live visitor POI data; no photographs supplied",
+        "photos":  [
+
+                   ],
+        "entry":  "/",
+        "fingerprint":  "stage-live-poi-list",
+        "sections":  [
+                         "visitor home",
+                         "place list",
+                         "recent listening",
+                         "audio detail",
+                         "content studio"
+                     ],
+        "signature":  "the live POI list",
+        "waived":  [
+
+                   ],
+        "prompt":  "Use Example as a reference and add a default visitor homepage while refreshing the other interfaces"
+    }
+]

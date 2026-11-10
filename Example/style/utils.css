@@ -1,0 +1,18 @@
+:root{
+    --text-color:#1B1642;
+}
+
+a{
+    text-decoration: none;
+    color: black;
+}
+body{
+    font-family: sans-serif;
+    font-size: 1.1rem;
+    color: var(--text-color);
+    /* font-family: Caveat; */
+}
+.flex { 
+    display: flex;
+    gap: var(--gap, 1rem);
+}
