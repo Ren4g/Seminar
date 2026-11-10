@@ -16,7 +16,9 @@ export const DATABASE_POOL = Symbol('DATABASE_POOL');
           database: process.env.PGDATABASE,
           user: process.env.PGUSER,
           password: process.env.PGPASSWORD,
-          max: 10,
+          // Keep each Vercel function instance's pool small when using a
+          // serverless Postgres pooler. Local persistent servers can use more.
+          max: process.env.VERCEL ? 1 : 10,
         });
         pool.on('error', (error) => {
           console.error('Unexpected PostgreSQL pool error', error);

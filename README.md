@@ -128,6 +128,19 @@ Repository có hai service trong `vercel.json`: `app` (NestJS) và `web` (Vite).
 
 Thêm các biến môi trường cho service `app` trong Vercel Project Settings: `DATABASE_URL` (PostgreSQL bên ngoài Vercel) hoặc bộ `PGHOST`, `PGPORT`, `PGDATABASE`, `PGUSER`, `PGPASSWORD`; `JWT_SECRET`; cùng các API key nếu dùng Google Translate hoặc ElevenLabs. Không cấu hình `VITE_API_URL` để frontend tiếp tục dùng rewrite cùng domain. Có thể đặt `PUBLIC_VISITOR_URL` nếu muốn QR dùng một domain ổn định; nếu bỏ trống trên Vercel, backend dùng URL deployment do Vercel cung cấp.
 
+### Dùng Supabase Postgres
+
+Với Vercel Functions, dùng **Transaction pooler** URI trong Supabase Dashboard → **Connect**. Endpoint đã xác nhận cho project này: host `aws-0-ap-southeast-1.pooler.supabase.com`, port `6543`, database `postgres`, user `postgres.xbsctukihmafvfcatzxw`. Không dùng URI direct port `5432` làm kết nối runtime cho Vercel serverless. Đặt URI đầy đủ (thay `[YOUR-PASSWORD]` bằng mật khẩu thật) làm `DATABASE_URL` cho service `app` ở Vercel Project Settings → Environment Variables; không commit URI vào repository. Nếu tự ghép URI, percent-encode các ký tự đặc biệt trong mật khẩu (ví dụ `@` thành `%40`). Ứng dụng giới hạn pool ở một kết nối trên mỗi Vercel function instance.
+
+Để chuyển database local, tạo bản dump rồi restore vào database Supabase bằng URI đích lấy từ Dashboard. Ví dụ PowerShell (thay các giá trị placeholder tại máy của bạn; không đưa mật khẩu vào lệnh đã lưu/chia sẻ):
+
+```powershell
+pg_dump -Fc -d "$env:LOCAL_DATABASE_URL" -f backup.dump
+pg_restore --no-owner --no-acl -d "$env:SUPABASE_DATABASE_URL" backup.dump
+```
+
+Đặt hai biến URI trong phiên PowerShell một cách an toàn trước khi chạy lệnh, và xóa `backup.dump` sau khi xác nhận dữ liệu đã chuyển nếu không cần giữ bản sao. Sau khi restore, kiểm tra schema/migrations và dữ liệu trên Supabase trước khi deploy.
+
 **Lưu ý:** `storage/` là filesystem cục bộ. Vercel Functions không cung cấp filesystem dùng chung và bền vững giữa các lần chạy, nên upload/TTS cần được chuyển sang object storage (ví dụ Vercel Blob hoặc S3-compatible) trước khi dùng audio trong production. PostgreSQL cũng phải là database bên ngoài, không phải service Docker Compose local.
 
 ## Chạy PostgreSQL cục bộ
