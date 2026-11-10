@@ -98,11 +98,14 @@ export class CatalogService {
     const poi = await this.repository.getPoi(poiId);
     if (!poi) throw new NotFoundException(`POI '${poiId}' was not found`);
     try {
-      const visitorUrl = new URL(process.env.PUBLIC_VISITOR_URL ?? 'http://localhost:5173/visitor');
+      const publicVisitorBase = process.env.PUBLIC_VISITOR_URL ?? (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}/visitor` : undefined);
+      if (!publicVisitorBase) throw new BadRequestException('PUBLIC_VISITOR_URL must be configured outside Vercel');
+      const visitorUrl = new URL(publicVisitorBase);
       visitorUrl.searchParams.set('poiId', String(poiId));
       visitorUrl.searchParams.set('language', process.env.DEFAULT_VISITOR_LANGUAGE ?? 'vi');
       return await this.repository.upsertQr(poiId, visitorUrl.toString(), dto.imagePath);
     } catch (error) {
+      if (error instanceof BadRequestException) throw error;
       if (error instanceof TypeError) throw new BadRequestException('PUBLIC_VISITOR_URL is invalid');
       throw new BadRequestException(error instanceof Error ? error.message : 'Unable to save QR code');
     }

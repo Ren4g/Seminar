@@ -1,4 +1,4 @@
-export const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:3000/api';
+export const API_URL = (import.meta.env.VITE_API_URL ?? '/api').replace(/\/$/, '');
 
 export type ApiUser = { id: number; username: string; email: string; role: string; isActive?: boolean };
 export type ApiContent = {

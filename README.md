@@ -93,7 +93,7 @@ Content/Visitor API:
 - Binary upload: `POST /api/content/:id/audio/upload` as multipart form-data field `file`; only supported audio MIME types and files within `MAX_AUDIO_FILE_BYTES` are accepted.
 - Public published content: `GET /api/visitor/pois/:poiId/content?languageCode=vi`.
 - QR resolve: `GET /api/visitor/qr/:qrId`.
-- QR management: `POST /api/pois/:poiId/qr` tự sinh URL visitor từ `PUBLIC_VISITOR_URL`; không cần gửi `targetUrl`. Danh sách xem tại `GET /api/qr`.
+- QR management: `POST /api/pois/:poiId/qr` tự sinh URL visitor từ `PUBLIC_VISITOR_URL`, hoặc từ URL deployment trên Vercel; không cần gửi `targetUrl`. Danh sách xem tại `GET /api/qr`.
 - Anonymous analytics heartbeat/event ingestion: `POST /api/visitor/events`; `eventId` UUID provides idempotency.
 
 ## Khởi tạo schema
@@ -121,6 +121,14 @@ Migration đọc [schema.sql](./schema.sql) và chạy schema/seed cùng migrati
 - `POST /api/locations/:locationId/pois`
 
 Location và POI yêu cầu ít nhất bản dịch tiếng Anh. Catalog hiện dùng PostgreSQL; cấu hình kết nối qua `PGHOST`, `PGPORT`, `PGDATABASE`, `PGUSER`, `PGPASSWORD` hoặc `DATABASE_URL`. Không commit file `.env` hay mật khẩu vào repository.
+
+## Deploy lên Vercel
+
+Repository có hai service trong `vercel.json`: `app` (NestJS) và `web` (Vite). Trong Vercel, chọn framework preset **Services** cho project. Rewrite public `/api/*` và `/media/*` tới `app`; các đường dẫn còn lại tới `web`. Frontend gọi API qua `/api` trên cùng domain, nên không cần `VITE_API_URL` hoặc service binding.
+
+Thêm các biến môi trường cho service `app` trong Vercel Project Settings: `DATABASE_URL` (PostgreSQL bên ngoài Vercel) hoặc bộ `PGHOST`, `PGPORT`, `PGDATABASE`, `PGUSER`, `PGPASSWORD`; `JWT_SECRET`; cùng các API key nếu dùng Google Translate hoặc ElevenLabs. Không cấu hình `VITE_API_URL` để frontend tiếp tục dùng rewrite cùng domain. Có thể đặt `PUBLIC_VISITOR_URL` nếu muốn QR dùng một domain ổn định; nếu bỏ trống trên Vercel, backend dùng URL deployment do Vercel cung cấp.
+
+**Lưu ý:** `storage/` là filesystem cục bộ. Vercel Functions không cung cấp filesystem dùng chung và bền vững giữa các lần chạy, nên upload/TTS cần được chuyển sang object storage (ví dụ Vercel Blob hoặc S3-compatible) trước khi dùng audio trong production. PostgreSQL cũng phải là database bên ngoài, không phải service Docker Compose local.
 
 ## Chạy PostgreSQL cục bộ
 
