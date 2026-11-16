@@ -33,3 +33,6 @@ CREATE TABLE IF NOT EXISTS analytics_ingestion (
     event_id      UUID PRIMARY KEY,
     received_at   TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+
+ALTER TABLE app_user ADD COLUMN IF NOT EXISTS failed_login_count INT NOT NULL DEFAULT 0;
+ALTER TABLE app_user ADD COLUMN IF NOT EXISTS locked_until TIMESTAMPTZ;
