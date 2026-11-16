@@ -11,13 +11,15 @@ CREATE TABLE role (
 );
 
 CREATE TABLE app_user (
-    user_id        BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    role_id        INT          NOT NULL REFERENCES role(role_id),
-    username       VARCHAR(100) NOT NULL UNIQUE,
-    email          VARCHAR(255) NOT NULL UNIQUE,
-    password_hash  VARCHAR(255) NOT NULL,
-    is_active      BOOLEAN      NOT NULL DEFAULT TRUE,
-    last_login_at  TIMESTAMPTZ
+    user_id            BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    role_id            INT          NOT NULL REFERENCES role(role_id),
+    username           VARCHAR(100) NOT NULL UNIQUE,
+    email              VARCHAR(255) NOT NULL UNIQUE,
+    password_hash      VARCHAR(255) NOT NULL,
+    is_active          BOOLEAN      NOT NULL DEFAULT TRUE,
+    last_login_at      TIMESTAMPTZ,
+    failed_login_count INT          NOT NULL DEFAULT 0,
+    locked_until       TIMESTAMPTZ
 );
 CREATE INDEX idx_app_user_role ON app_user(role_id);
 
