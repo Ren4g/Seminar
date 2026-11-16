@@ -1,5 +1,5 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
-import { ActivityEventDto } from './visitor.dto';
+import { ActivityEventDto, VisitorPresenceDto } from './visitor.dto';
 import { VisitorRepository } from './visitor.repository';
 
 @Injectable()
@@ -29,6 +29,10 @@ export class VisitorService {
     }
     await this.repository.recordEvent(dto);
     return { accepted: true, eventId: dto.eventId };
+  }
+  async recordPresence(dto: VisitorPresenceDto) {
+    await this.repository.recordPresence(dto);
+    return { accepted: true };
   }
   analyticsSummary() { return this.repository.analyticsSummary(); }
 }

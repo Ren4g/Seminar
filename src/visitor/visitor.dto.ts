@@ -37,3 +37,8 @@ export class ActivityEventDto {
   @IsString()
   anonymousSessionKey?: string;
 }
+
+export class VisitorPresenceDto {
+  @IsUUID()
+  anonymousSessionKey!: string;
+}

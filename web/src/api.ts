@@ -17,7 +17,7 @@ export type ApiLocation = { id: number; isActive: boolean; translations: { langu
 export type ApiPoi = ApiLocation & { locationId: number };
 export type ApiQr = { id: number; poiId: number; targetUrl: string; imagePath?: string; createdAt: string };
 export type ApiReviewEvent = { eventType: string; reason?: string; actedAt: string; actorUserId: number };
-export type ApiAnalytics = { pageViews: number; qrOpens: number; audioStarts: number; listeningMs: number; activePois: number; windowDays: number };
+export type ApiAnalytics = { pageViews: number; qrOpens: number; audioStarts: number; listeningMs: number; activePois: number; activeVisitors: number; windowDays: number };
 type TranslationInput = { languageCode: string; name: string; shortDescription?: string };
 
 export class ApiError extends Error {
@@ -74,5 +74,6 @@ export const api = {
   setLocationActive: (token: string, id: number, isActive: boolean) => request<ApiLocation>(`/locations/${id}/status`, { method: 'PATCH', body: JSON.stringify({ isActive }) }, token),
   setPoiActive: (token: string, id: number, isActive: boolean) => request<ApiPoi>(`/pois/${id}/status`, { method: 'PATCH', body: JSON.stringify({ isActive }) }, token),
   recordEvent: (event: { eventId: string; eventType: string; poiId?: number; languageCode?: string; anonymousSessionKey?: string }) => request<{ accepted: boolean }>('/visitor/events', { method: 'POST', body: JSON.stringify(event) }),
+  recordPresence: (presence: { anonymousSessionKey: string }) => request<{ accepted: boolean }>('/visitor/presence', { method: 'POST', body: JSON.stringify(presence) }),
   analyticsSummary: (token: string) => request<ApiAnalytics>('/visitor/analytics/summary', {}, token),
 };

@@ -1,6 +1,7 @@
 ﻿import { useEffect, useMemo, useState } from 'react';
 import type { ChangeEvent, FormEvent, ReactNode } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
+import { QRCodeCanvas } from 'qrcode.react';
 import { api, API_URL, type ApiAnalytics, type ApiContent, type ApiVoice, type ApiLanguage, type ApiLocation, type ApiPoi, type ApiQr, type ApiReviewEvent, type ApiUser, ApiError } from './api';
 import './styles.css';
 
@@ -20,6 +21,15 @@ type ContentItem = {
   hasAudio?: boolean;
   audioUrl?: string;
 };
+
+function getVisitorSessionKey(): string {
+  const key = 'audio-guide-session';
+  const existing = sessionStorage.getItem(key);
+  if (existing) return existing;
+  const created = crypto.randomUUID();
+  sessionStorage.setItem(key, created);
+  return created;
+}
 
 const initialItems: ContentItem[] = [
   { id: 1, title: 'Cổng thành phía Đông', place: 'Khu di tích Hoàng Thành', language: 'VI', status: 'Chờ duyệt', updated: '12 phút trước', duration: '02:34', body: 'Bạn đang đứng trước cổng thành phía Đông, lối vào từng đón những đoàn khách đầu tiên của kinh thành.' },
@@ -55,14 +65,28 @@ function VisitorApp() {
   const [history, setHistory] = useState<{ title: string; poiId: number; listenedAt: string }[]>([]);
 
   useEffect(() => {
+    const sessionKey = getVisitorSessionKey();
+    const sendHeartbeat = () => {
+      if (document.visibilityState !== 'visible') return;
+      void api.recordPresence({ anonymousSessionKey: sessionKey }).catch(() => undefined);
+    };
+    sendHeartbeat();
+    const timer = window.setInterval(sendHeartbeat, 30_000);
+    document.addEventListener('visibilitychange', sendHeartbeat);
+    return () => {
+      window.clearInterval(timer);
+      document.removeEventListener('visibilitychange', sendHeartbeat);
+    };
+  }, []);
+
+  useEffect(() => {
     if (!poiId) {
       setContent(null);
       setError('');
       setLoading(false);
       return;
     }
-    const sessionKey = sessionStorage.getItem('audio-guide-session') ?? crypto.randomUUID();
-    sessionStorage.setItem('audio-guide-session', sessionKey);
+    const sessionKey = getVisitorSessionKey();
     void api.recordEvent({ eventId: crypto.randomUUID(), eventType: 'PAGE_VIEW', poiId, languageCode: language, anonymousSessionKey: sessionKey }).catch(() => undefined);
     setLoading(true);
     api.visitorContent(poiId, language)
@@ -162,7 +186,31 @@ function QrPanel({ token, pois, onToast }: { token: string; pois: ApiPoi[]; onTo
     }
     finally { setBusy(false); }
   };
-  return <section className="catalog-panel"><div className="catalog-heading"><div><h2>QR code cho từng điểm tham quan.</h2></div><span className="catalog-count">{codes.length} QR code</span></div><form className="crud-form qr-form" onSubmit={save}><label>POI<select value={poiId} onChange={(event) => setPoiId(event.target.value)} required disabled={busy}><option value="">Chọn POI</option>{pois.map((poi) => <option key={poi.id} value={poi.id}>POI #{poi.id}</option>)}</select></label><p className="form-note">Đường dẫn visitor sẽ được hệ thống tự tạo theo POI và ngôn ngữ mặc định.</p>{pois.length === 0 && <p className="empty-state">Chưa có POI khả dụng. Hãy tạo POI ở mục “Địa điểm & POI” trước.</p>}<button type="submit" className="primary-button" disabled={busy || pois.length === 0}>{busy ? 'Đang lưu…' : 'Tạo hoặc cập nhật QR'}</button>{message && <p className="toast" role="status">{message}</p>}</form><div className="crud-table">{codes.map((code) => <div className="crud-row" key={code.id}><strong>QR #{code.id}</strong><span>{pois.find((poi) => poi.id === code.poiId)?.translations.find((item) => item.languageCode === 'en')?.name ?? `POI #${code.poiId}`}</span><a href={code.targetUrl} target="_blank" rel="noreferrer">Mở visitor</a><small>{code.targetUrl}</small></div>)}{codes.length === 0 && <p className="empty-state">Chưa có QR code. Chọn POI để tạo đường dẫn tự động.</p>}</div></section>;
+  const refreshAll = async () => {
+    setBusy(true);
+    setMessage('');
+    try {
+      await Promise.all(codes.map((code) => api.saveQr(token, code.poiId)));
+      await reload();
+      setMessage('Đã cập nhật link cho tất cả QR code.');
+    } catch (error) {
+      const text = error instanceof Error ? error.message : 'Không thể cập nhật các link QR';
+      setMessage(text);
+      onToast(text);
+    } finally { setBusy(false); }
+  };
+  const download = (code: ApiQr) => {
+    const canvas = document.getElementById(`qr-canvas-${code.id}`) as HTMLCanvasElement | null;
+    if (!canvas) {
+      setMessage('Không thể tạo ảnh QR để tải xuống.');
+      return;
+    }
+    const link = document.createElement('a');
+    link.href = canvas.toDataURL('image/png');
+    link.download = `qr-poi-${code.poiId}.png`;
+    link.click();
+  };
+  return <section className="catalog-panel"><div className="catalog-heading"><div><h2>QR code cho từng điểm tham quan.</h2><p className="form-note">Ảnh QR được tạo từ đường dẫn visitor và có thể tải xuống để in.</p></div><span className="catalog-count">{codes.length} QR code</span></div><form className="crud-form qr-form" onSubmit={save}><label>POI<select value={poiId} onChange={(event) => setPoiId(event.target.value)} required disabled={busy}><option value="">Chọn POI</option>{pois.map((poi) => <option key={poi.id} value={poi.id}>POI #{poi.id}</option>)}</select></label><p className="form-note">Đường dẫn visitor sẽ được hệ thống tự tạo theo POI và ngôn ngữ mặc định.</p>{pois.length === 0 && <p className="empty-state">Chưa có POI khả dụng. Hãy tạo POI ở mục “Địa điểm & POI” trước.</p>}<button type="submit" className="primary-button" disabled={busy || pois.length === 0}>{busy ? 'Đang lưu…' : 'Tạo hoặc cập nhật QR'}</button>{message && <p className="toast" role="status">{message}</p>}</form>{codes.length > 0 && <button className="quiet-button qr-refresh-all" type="button" disabled={busy} onClick={() => void refreshAll()}>{busy ? 'Đang cập nhật…' : 'Cập nhật link cho tất cả QR'}</button>}<div className="qr-card-grid">{codes.map((code) => { const poi = pois.find((item) => item.id === code.poiId); const name = poi?.translations.find((item) => item.languageCode === 'en')?.name ?? `POI #${code.poiId}`; return <article className="qr-card" key={code.id}><div className="qr-card-image"><QRCodeCanvas id={`qr-canvas-${code.id}`} value={code.targetUrl} size={224} level="H" marginSize={2} title={`QR code for ${name}`} /></div><div className="qr-card-content"><div><span className="qr-card-kicker">QR #{code.id}</span><h3>{name}</h3></div><a className="qr-card-url" href={code.targetUrl} target="_blank" rel="noreferrer">{code.targetUrl}</a><div className="qr-card-actions"><a className="quiet-button" href={code.targetUrl} target="_blank" rel="noreferrer">Mở visitor ↗</a><button className="primary-button" type="button" onClick={() => download(code)}>Tải PNG</button></div></div></article>; })}{codes.length === 0 && <p className="empty-state">Chưa có QR code. Chọn POI để tạo đường dẫn tự động.</p>}</div></section>;
 }
 
 function UserPanel({ token, onToast }: { token: string; onToast: (message: string) => void }) {
@@ -197,10 +245,16 @@ function UserPanel({ token, onToast }: { token: string; onToast: (message: strin
 
 function OverviewPanel({ items, pois, voices, token }: { items: ContentItem[]; pois: ApiPoi[]; voices: ApiVoice[]; token: string }) {
   const [analytics, setAnalytics] = useState<ApiAnalytics | null>(null);
-  useEffect(() => { void api.analyticsSummary(token).then(setAnalytics).catch(() => undefined); }, [token]);
+  useEffect(() => {
+    let mounted = true;
+    const refresh = () => { void api.analyticsSummary(token).then((result) => { if (mounted) setAnalytics(result); }).catch(() => undefined); };
+    refresh();
+    const timer = window.setInterval(refresh, 30_000);
+    return () => { mounted = false; window.clearInterval(timer); };
+  }, [token]);
   const published = items.filter((item) => item.status === 'Đã xuất bản').length;
   const review = items.filter((item) => item.status === 'Chờ duyệt').length;
-  return <section className="overview-panel"><div className="overview-intro"><h2>Hệ thống đang giữ nhịp cho những câu chuyện địa phương.</h2><p className="overview-range">{analytics ? `${analytics.windowDays} ngày gần nhất` : 'Đang tải analytics'}</p><p>Kiểm tra nội dung, audio và điểm truy cập visitor từ một nơi.</p></div><div className="overview-metrics"><article><strong>{items.length}</strong><span>phiên bản nội dung</span></article><article><strong>{published}</strong><span>đã xuất bản</span></article><article><strong>{review}</strong><span>chờ duyệt</span></article><article><strong>{pois.length}</strong><span>điểm tham quan · {voices.length} giọng đọc</span></article><article><strong>{analytics?.pageViews ?? '—'}</strong><span>lượt mở visitor</span></article><article><strong>{analytics?.qrOpens ?? '—'}</strong><span>lượt mở QR</span></article><article><strong>{analytics?.audioStarts ?? '—'}</strong><span>lượt bắt đầu audio</span></article><article><strong>{analytics ? `${Math.round(analytics.listeningMs / 60000)}m` : '—'}</strong><span>thời lượng nghe</span></article></div><div className="overview-actions"><button className="quiet-button" onClick={() => window.open('/visitor', '_blank')}>Mở trang visitor <span>↗</span></button><span>Analytics lấy trực tiếp từ activity_event.</span></div></section>;
+  return <section className="overview-panel"><div className="overview-intro"><h2>Hệ thống đang giữ nhịp cho những câu chuyện địa phương.</h2><p className="overview-range">{analytics ? `${analytics.windowDays} ngày gần nhất` : 'Đang tải analytics'}</p><p>Kiểm tra nội dung, audio và điểm truy cập visitor từ một nơi.</p></div><div className="overview-metrics"><article><strong>{items.length}</strong><span>phiên bản nội dung</span></article><article><strong>{published}</strong><span>đã xuất bản</span></article><article><strong>{review}</strong><span>chờ duyệt</span></article><article><strong>{pois.length}</strong><span>điểm tham quan · {voices.length} giọng đọc</span></article><article><strong>{analytics?.pageViews ?? '—'}</strong><span>lượt mở visitor</span></article><article><strong>{analytics?.qrOpens ?? '—'}</strong><span>lượt mở QR</span></article><article><strong>{analytics?.audioStarts ?? '—'}</strong><span>lượt bắt đầu audio</span></article><article><strong>{analytics ? `${Math.round(analytics.listeningMs / 60000)}m` : '—'}</strong><span>thời lượng nghe</span></article><article><strong>{analytics?.activeVisitors ?? '—'}</strong><span>đang truy cập · 2 phút gần nhất</span></article></div><div className="overview-actions"><button className="quiet-button" onClick={() => window.open('/visitor', '_blank')}>Mở trang visitor <span>↗</span></button><span>Analytics lấy trực tiếp từ activity_event; lượt đang truy cập cập nhật mỗi 30 giây.</span></div></section>;
 }
 
 function App() {

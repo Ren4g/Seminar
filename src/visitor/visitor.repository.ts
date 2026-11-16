@@ -89,6 +89,17 @@ export class VisitorRepository {
     }
   }
 
+  async recordPresence(presence: { anonymousSessionKey: string }): Promise<void> {
+    await this.pool.query(
+      `INSERT INTO visitor_presence (anonymous_session_key, last_seen_at)
+       VALUES ($1, now())
+       ON CONFLICT (anonymous_session_key) DO UPDATE
+         SET last_seen_at = now()`,
+      [presence.anonymousSessionKey],
+    );
+    await this.pool.query(`DELETE FROM visitor_presence WHERE last_seen_at < now() - interval '5 minutes'`);
+  }
+
   async analyticsSummary() {
       const result = await this.pool.query(
         `SELECT
@@ -96,11 +107,13 @@ export class VisitorRepository {
            COUNT(*) FILTER (WHERE event_type = 'QR_OPEN')::int AS qr_opens,
            COUNT(*) FILTER (WHERE event_type = 'AUDIO_START')::int AS audio_starts,
            COALESCE(SUM(duration_ms) FILTER (WHERE event_type = 'AUDIO_PLAY_DURATION'), 0)::bigint AS listening_ms,
-           COUNT(DISTINCT poi_id)::int AS active_pois
+           COUNT(DISTINCT poi_id)::int AS active_pois,
+           (SELECT COUNT(*)::int FROM visitor_presence
+            WHERE last_seen_at >= now() - interval '2 minutes') AS active_visitors
          FROM activity_event
          WHERE occurred_at >= now() - interval '30 days'`,
       );
       const row = result.rows[0];
-      return { pageViews: Number(row.page_views), qrOpens: Number(row.qr_opens), audioStarts: Number(row.audio_starts), listeningMs: Number(row.listening_ms), activePois: Number(row.active_pois), windowDays: 30 };
+      return { pageViews: Number(row.page_views), qrOpens: Number(row.qr_opens), audioStarts: Number(row.audio_starts), listeningMs: Number(row.listening_ms), activePois: Number(row.active_pois), activeVisitors: Number(row.active_visitors), windowDays: 30 };
   }
 }

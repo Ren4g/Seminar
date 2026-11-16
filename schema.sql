@@ -202,6 +202,15 @@ CREATE INDEX idx_ae_type ON activity_event(event_type, occurred_at);
 CREATE INDEX idx_ae_qr ON activity_event(qr_id);
 
 -- ---------------------------------------------------------------------
+-- VISITOR PRESENCE (active sessions, refreshed by visitor heartbeats)
+-- ---------------------------------------------------------------------
+CREATE TABLE visitor_presence (
+    anonymous_session_key VARCHAR(128) PRIMARY KEY,
+    last_seen_at          TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX idx_visitor_presence_last_seen ON visitor_presence(last_seen_at);
+
+-- ---------------------------------------------------------------------
 -- Dữ liệu khởi tạo (tùy chọn)
 -- ---------------------------------------------------------------------
 INSERT INTO language (language_code, language_name, is_active, is_fallback) VALUES
