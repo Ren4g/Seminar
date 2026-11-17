@@ -59,10 +59,10 @@ export class ContentService {
       const file = 'buffer' in dto ? dto as UploadAudioDto & { buffer: Buffer; fileType: string } : undefined;
       if (!file && (!dto.fileName || dto.fileSize === undefined)) throw new BadRequestException('Audio file or file metadata is required');
       if (file) {
-        const allowed = new Set(['audio/mpeg', 'audio/mp3', 'audio/wav', 'audio/x-wav', 'audio/ogg', 'audio/mp4', 'audio/aac']);
-        const maxSize = Number(process.env.MAX_AUDIO_FILE_BYTES ?? 25 * 1024 * 1024);
-        if (!allowed.has(file.fileType)) throw new BadRequestException('Unsupported audio MIME type');
-        if (file.fileSize <= 0 || file.fileSize > maxSize) throw new BadRequestException(`Audio file must be between 1 byte and ${maxSize} bytes`);
+        const allowed = new Set(['audio/mpeg', 'audio/mp3']);
+        const maxSize = Number(process.env.MAX_AUDIO_FILE_BYTES ?? 10 * 1024 * 1024);
+        if (!allowed.has(file.fileType)) throw new BadRequestException('Unsupported audio MIME type. Only MP3 is allowed');
+        if (file.fileSize <= 0 || file.fileSize > maxSize) throw new BadRequestException(`Audio file must be between 1 byte and ${maxSize} bytes (max 10 MB)`);
       }
       const audio = file ? await this.repository.saveUploadedAudio(id, file.fileName, file.fileSize, file.buffer, process.env.MEDIA_DIR ?? 'storage') : await this.repository.uploadAudio(id, dto.fileName, dto.fileSize);
       if (!audio) throw new NotFoundException(`Content version '${id}' was not found`);

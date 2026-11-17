@@ -72,6 +72,7 @@ export const api = {
   assignUserLocation: (token: string, userId: number, locationId: number) => request<void>(`/users/${userId}/locations/${locationId}`, { method: 'POST', body: JSON.stringify({}) }, token),
   userLocations: (token: string, userId: number) => request<number[]>(`/users/${userId}/locations`, {}, token),
   setLocationActive: (token: string, id: number, isActive: boolean) => request<ApiLocation>(`/locations/${id}/status`, { method: 'PATCH', body: JSON.stringify({ isActive }) }, token),
+  deleteLocation: (token: string, id: number) => request<{ deleted: boolean }>(`/locations/${id}`, { method: 'DELETE' }, token),
   setPoiActive: (token: string, id: number, isActive: boolean) => request<ApiPoi>(`/pois/${id}/status`, { method: 'PATCH', body: JSON.stringify({ isActive }) }, token),
   recordEvent: (event: { eventId: string; eventType: string; poiId?: number; languageCode?: string; anonymousSessionKey?: string }) => request<{ accepted: boolean }>('/visitor/events', { method: 'POST', body: JSON.stringify(event) }),
   recordPresence: (presence: { anonymousSessionKey: string }) => request<{ accepted: boolean }>('/visitor/presence', { method: 'POST', body: JSON.stringify(presence) }),

@@ -147,6 +147,19 @@ export class CatalogRepository {
       return this.getLocation(id);
     }
 
+  async countPoisByLocation(locationId: number): Promise<number> {
+    const result = await this.pool.query<{ count: string }>(
+      'SELECT COUNT(*)::text AS count FROM poi WHERE location_id = $1',
+      [locationId],
+    );
+    return Number(result.rows[0]?.count ?? 0);
+  }
+
+  async deleteLocation(id: number): Promise<boolean> {
+    const result = await this.pool.query('DELETE FROM location WHERE location_id = $1 RETURNING location_id', [id]);
+    return (result.rowCount ?? 0) > 0;
+  }
+
   async setPoiActive(id: number, isActive: boolean): Promise<Poi | undefined> {
       await this.pool.query('UPDATE poi SET is_active = $2 WHERE poi_id = $1', [id, isActive]);
       return this.getPoi(id);
