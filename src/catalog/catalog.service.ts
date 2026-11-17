@@ -74,6 +74,17 @@ export class CatalogService {
       return location;
     }
 
+  async deleteLocation(id: number): Promise<{ deleted: boolean }> {
+    const location = await this.repository.getLocation(id);
+    if (!location) throw new NotFoundException(`Location '${id}' was not found`);
+    const poiCount = await this.repository.countPoisByLocation(id);
+    if (poiCount > 0) {
+      throw new BadRequestException('Địa điểm đang chứa điểm tham quan (POI), không thể xóa. Đề xuất chuyển sang trạng thái ngừng hoạt động.');
+    }
+    await this.repository.deleteLocation(id);
+    return { deleted: true };
+  }
+
   async setPoiActive(id: number, dto: UpdateActiveDto) {
       const poi = await this.repository.setPoiActive(id, dto.isActive);
       if (!poi) throw new NotFoundException(`POI '${id}' was not found`);

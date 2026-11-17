@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, ParseIntPipe, Patch, Post, Query } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, ParseIntPipe, Patch, Post, Query } from '@nestjs/common';
 import { CreateLanguageDto, CreateLocationDto, CreatePoiDto, CreateQrDto, CreateVoiceDto, SetDefaultVoiceDto, UpdateActiveDto } from './catalog.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { Roles, } from '../auth/roles.decorator';
@@ -67,6 +67,11 @@ export class CatalogController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('ADMIN')
   setLocationActive(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateActiveDto) { return this.service.setLocationActive(id, dto); }
+
+  @Delete('locations/:id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN')
+  deleteLocation(@Param('id', ParseIntPipe) id: number) { return this.service.deleteLocation(id); }
 
   @Patch('pois/:id/status')
   @UseGuards(JwtAuthGuard, RolesGuard)
