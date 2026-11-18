@@ -6,6 +6,51 @@ import { ElevenLabsAudioDto } from './audio.dto';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 
+function splitTextIntoTtsChunks(text: string, maxLength = 160): string[] {
+  const sentences = text.match(/[^.!?\n,]+[.!?\n,]?|.+/g) ?? [text];
+  const chunks: string[] = [];
+  let current = '';
+  for (const sentence of sentences) {
+    const trimmed = sentence.trim();
+    if (!trimmed) continue;
+    if ((current + ' ' + trimmed).trim().length <= maxLength) {
+      current = (current + ' ' + trimmed).trim();
+    } else {
+      if (current) chunks.push(current);
+      if (trimmed.length > maxLength) {
+        const words = trimmed.split(' ');
+        let sub = '';
+        for (const word of words) {
+          if ((sub + ' ' + word).trim().length <= maxLength) {
+            sub = (sub + ' ' + word).trim();
+          } else {
+            if (sub) chunks.push(sub);
+            sub = word;
+          }
+        }
+        current = sub;
+      } else {
+        current = trimmed;
+      }
+    }
+  }
+  if (current) chunks.push(current);
+  return chunks.length ? chunks : [text.slice(0, maxLength)];
+}
+
+async function fetchGoogleTranslateTts(text: string, lang: string): Promise<Buffer | undefined> {
+  const chunks = splitTextIntoTtsChunks(text);
+  const buffers: Buffer[] = [];
+  for (const chunk of chunks) {
+    const response = await fetch(`https://translate.google.com/translate_tts?ie=UTF-8&q=${encodeURIComponent(chunk)}&tl=${encodeURIComponent(lang)}&client=tw-ob`, {
+      headers: { 'User-Agent': 'Mozilla/5.0' },
+    });
+    if (!response.ok) return undefined;
+    buffers.push(Buffer.from(await response.arrayBuffer()));
+  }
+  return buffers.length ? Buffer.concat(buffers) : undefined;
+}
+
 @Injectable()
 export class ContentService {
   private readonly repository: ContentRepository;
@@ -44,31 +89,57 @@ export class ContentService {
     const apiKey = process.env.GOOGLE_TRANSLATE_API_KEY;
     const source = await this.find(id);
     let translatedText = '';
+    let translatedTitle = '';
 
-    // Nếu có key Google Translate thật (không phải free/mock/placeholder) thì gọi API
+    // 1. Nếu có key Google Cloud Translate thật (không phải free/mock/placeholder) thì ưu tiên gọi
     if (apiKey && apiKey !== 'free' && apiKey !== 'mock' && !apiKey.startsWith('replace-with')) {
       try {
         const response = await fetch(`https://translation.googleapis.com/language/translate/v2?key=${encodeURIComponent(apiKey)}`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ q: source.narrationText, source: source.languageCode, target: dto.targetLanguageCode, format: 'text' }),
+          body: JSON.stringify({ q: [source.title, source.narrationText], source: source.languageCode, target: dto.targetLanguageCode, format: 'text' }),
         });
         if (response.ok) {
           const payload = await response.json() as { data?: { translations?: { translatedText?: string }[] } };
-          translatedText = payload.data?.translations?.[0]?.translatedText?.trim() ?? '';
+          translatedTitle = payload.data?.translations?.[0]?.translatedText?.trim() ?? '';
+          translatedText = payload.data?.translations?.[1]?.translatedText?.trim() ?? '';
         }
       } catch {
-        // Nếu gọi ngoài lỗi, chuyển sang mock translation bên dưới
+        // Nếu gọi ngoài lỗi, chuyển sang endpoint free hoặc mock bên dưới
       }
     }
 
-    // Chế độ Mock / Test cục bộ: tự tạo bản dịch nếu không có API key hoặc gọi thất bại
+    // 2. Endpoint Google Translate miễn phí (client=gtx, không cần API key):
+    if (!translatedText) {
+      try {
+        const translateGtx = async (text: string): Promise<string> => {
+          const res = await fetch(`https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=${encodeURIComponent(dto.targetLanguageCode)}&dt=t&q=${encodeURIComponent(text)}`);
+          if (!res.ok) return '';
+          const data = await res.json() as [ [string, string][] ];
+          return Array.isArray(data?.[0]) ? data[0].map((item) => item[0]).join('') : '';
+        };
+
+        const [autoTitle, autoText] = await Promise.all([
+          translateGtx(source.title),
+          translateGtx(source.narrationText),
+        ]);
+        if (autoText) {
+          translatedTitle = autoTitle || `[${dto.targetLanguageCode.toUpperCase()}] ${source.title}`;
+          translatedText = autoText;
+        }
+      } catch {
+        // Fallback sang chế độ mock nếu không có mạng
+      }
+    }
+
+    // 3. Chế độ Mock / Test cục bộ: tự tạo bản dịch nếu không có API key hoặc gọi thất bại
     if (!translatedText) {
       const targetLang = dto.targetLanguageCode.toUpperCase();
+      translatedTitle = `[${targetLang}] ${source.title}`;
       translatedText = `[Bản dịch tự động ${targetLang}] ${source.narrationText}`;
     }
 
-    return this.repository.createTranslation(id, dto.targetLanguageCode, `[${dto.targetLanguageCode.toUpperCase()}] ${source.title}`, translatedText);
+    return this.repository.createTranslation(id, dto.targetLanguageCode, translatedTitle || `[${dto.targetLanguageCode.toUpperCase()}] ${source.title}`, translatedText);
   }
   async create(dto: CreateContentDto) {
     try { return await this.repository.create(dto.poiId, dto.languageCode, dto.title, dto.narrationText); }
@@ -140,7 +211,7 @@ export class ContentService {
 
       let audio: Buffer | undefined;
 
-      // Nếu có key ElevenLabs thật (không phải mock/placeholder) thì gọi API
+      // 1. Tầng 1: Nếu có key ElevenLabs thật (không phải mock/placeholder) thì ưu tiên gọi ElevenLabs
       if (apiKey && apiKey !== 'mock' && !apiKey.startsWith('replace-with')) {
         try {
           const response = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${encodeURIComponent(voice.providerVoiceKey)}/stream?output_format=mp3_44100_128`, {
@@ -152,11 +223,20 @@ export class ContentService {
             audio = Buffer.from(await response.arrayBuffer());
           }
         } catch {
-          // Fallback to sample mp3 below
+          // Chuyển sang Google Translate TTS miễn phí bên dưới
         }
       }
 
-      // Chế độ Mock / Test cục bộ: nếu không có API key hoặc gọi lỗi thì lấy file audio mẫu có sẵn trong dự án
+      // 2. Tầng 2: Google Translate TTS miễn phí (giọng đọc tự động, không cần API key)
+      if (!audio || audio.length === 0) {
+        try {
+          audio = await fetchGoogleTranslateTts(version.narrationText, version.languageCode);
+        } catch {
+          // Chuyển sang audio mẫu bên dưới nếu rớt mạng
+        }
+      }
+
+      // 3. Tầng 3: Chế độ Mock / Test cục bộ: nếu không có mạng hoặc gọi lỗi thì lấy file audio mẫu có sẵn trong dự án
       if (!audio || audio.length === 0) {
         audio = await this.loadSampleAudio();
       }

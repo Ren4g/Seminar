@@ -1,5 +1,5 @@
 import { Body, Controller, Delete, Get, Param, ParseIntPipe, Patch, Post, Query } from '@nestjs/common';
-import { CreateLanguageDto, CreateLocationDto, CreatePoiDto, CreateQrDto, CreateVoiceDto, SetDefaultVoiceDto, UpdateActiveDto } from './catalog.dto';
+import { CreateLanguageDto, CreateLocationDto, CreatePoiDto, CreateQrDto, CreateVoiceDto, SetDefaultVoiceDto, UpdateActiveDto, UpdateLanguageDto } from './catalog.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { Roles, } from '../auth/roles.decorator';
 import { RolesGuard } from '../auth/roles.guard';
@@ -24,6 +24,27 @@ export class CatalogController {
   @Roles('ADMIN')
   createLanguage(@Body() dto: CreateLanguageDto) {
     return this.service.createLanguage(dto);
+  }
+
+  @Patch('languages/:code/status')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN')
+  setLanguageActive(@Param('code') code: string, @Body() dto: UpdateActiveDto) {
+    return this.service.setLanguageActive(code, dto);
+  }
+
+  @Patch('languages/:code')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN')
+  updateLanguage(@Param('code') code: string, @Body() dto: UpdateLanguageDto) {
+    return this.service.updateLanguage(code, dto);
+  }
+
+  @Delete('languages/:code')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN')
+  deleteLanguage(@Param('code') code: string) {
+    return this.service.deleteLanguage(code);
   }
 
   @Get('locations')
@@ -90,6 +111,13 @@ export class CatalogController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('ADMIN')
   createVoice(@Body() dto: CreateVoiceDto) { return this.service.createVoice(dto); }
+
+  @Delete('voices/:id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN')
+  deleteVoice(@Param('id', ParseIntPipe) id: number) {
+    return this.service.deleteVoice(id);
+  }
 
   @Patch('languages/:code/default-voice')
   @UseGuards(JwtAuthGuard, RolesGuard)

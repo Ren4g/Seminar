@@ -15,6 +15,11 @@ export class VisitorController {
     return this.service.getPoiContent(poiId, query.languageCode);
   }
 
+  @Get('pois/:poiId/languages')
+  getPoiLanguages(@Param('poiId', ParseIntPipe) poiId: number) {
+    return this.service.getPoiLanguages(poiId);
+  }
+
   @Get('qr/:qrId')
   resolveQr(@Param('qrId', ParseIntPipe) qrId: number) { return this.service.resolveQr(qrId); }
 

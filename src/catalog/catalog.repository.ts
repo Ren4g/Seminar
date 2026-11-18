@@ -52,6 +52,91 @@ export class CatalogRepository {
     return this.toLanguage(result.rows[0]);
   }
 
+  async getLanguage(code: string): Promise<Language | undefined> {
+    const result = await this.pool.query<LanguageRow>(
+      `SELECT l.language_code, l.language_name, l.is_active, l.is_fallback,
+              d.voice_id AS default_voice_id
+       FROM language l
+       LEFT JOIN language_default_voice d ON d.language_code = l.language_code
+       WHERE l.language_code = $1`,
+      [code],
+    );
+    if (!result.rows[0]) return undefined;
+    return this.toLanguage(result.rows[0]);
+  }
+
+  async setLanguageActive(code: string, isActive: boolean): Promise<Language | undefined> {
+    const result = await this.pool.query<LanguageRow>(
+      `UPDATE language
+       SET is_active = $2
+       WHERE language_code = $1
+       RETURNING language_code, language_name, is_active, is_fallback`,
+      [code, isActive],
+    );
+    if (!result.rows[0]) return undefined;
+    return this.toLanguage(result.rows[0]);
+  }
+
+  async updateLanguage(code: string, name: string): Promise<Language | undefined> {
+    const result = await this.pool.query<LanguageRow>(
+      `UPDATE language
+       SET language_name = $2
+       WHERE language_code = $1
+       RETURNING language_code, language_name, is_active, is_fallback`,
+      [code, name],
+    );
+    if (!result.rows[0]) return undefined;
+    return this.toLanguage(result.rows[0]);
+  }
+
+  async countLanguageDependencies(code: string): Promise<{ narrationCount: number; locationCount: number; poiCount: number }> {
+    const [nc, lt, pt] = await Promise.all([
+      this.pool.query<{ count: string }>('SELECT count(*)::text as count FROM narration_content WHERE language_code = $1', [code]),
+      this.pool.query<{ count: string }>('SELECT count(*)::text as count FROM location_translation WHERE language_code = $1', [code]),
+      this.pool.query<{ count: string }>('SELECT count(*)::text as count FROM poi_translation WHERE language_code = $1', [code]),
+    ]);
+    return {
+      narrationCount: Number(nc.rows[0]?.count ?? '0'),
+      locationCount: Number(lt.rows[0]?.count ?? '0'),
+      poiCount: Number(pt.rows[0]?.count ?? '0'),
+    };
+  }
+
+  async deleteLanguage(code: string): Promise<void> {
+    const client = await this.pool.connect();
+    try {
+      await client.query('BEGIN');
+      await client.query('DELETE FROM language_default_voice WHERE language_code = $1', [code]);
+      await client.query('UPDATE content_version SET selected_voice_id = NULL WHERE selected_voice_id IN (SELECT voice_id FROM voice WHERE language_code = $1)', [code]);
+      await client.query('UPDATE audio SET voice_id = NULL WHERE voice_id IN (SELECT voice_id FROM voice WHERE language_code = $1)', [code]);
+      await client.query('DELETE FROM voice WHERE language_code = $1', [code]);
+      await client.query('DELETE FROM language WHERE language_code = $1', [code]);
+      await client.query('COMMIT');
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
+
+  async deleteVoice(voiceId: number): Promise<void> {
+    const client = await this.pool.connect();
+    try {
+      await client.query('BEGIN');
+      await client.query('DELETE FROM language_default_voice WHERE voice_id = $1', [voiceId]);
+      await client.query('UPDATE content_version SET selected_voice_id = NULL WHERE selected_voice_id = $1', [voiceId]);
+      await client.query('UPDATE audio SET voice_id = NULL WHERE voice_id = $1', [voiceId]);
+      await client.query('DELETE FROM voice WHERE voice_id = $1', [voiceId]);
+      await client.query('COMMIT');
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
+
   async listLocations(): Promise<Location[]> {
     const result = await this.pool.query<EntityRow>(
       `SELECT location_id AS id, is_active
