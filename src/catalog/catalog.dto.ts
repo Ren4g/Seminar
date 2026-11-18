@@ -31,6 +31,17 @@ export class CreateLanguageDto {
   isActive?: boolean;
 }
 
+export class UpdateLanguageDto {
+  @IsOptional()
+  @IsString()
+  @Length(1, 100)
+  name?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  isActive?: boolean;
+}
+
 export class CreateLocationDto {
   @ValidateNested({ each: true })
   @Type(() => TranslationDto)

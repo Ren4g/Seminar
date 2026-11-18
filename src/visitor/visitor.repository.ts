@@ -9,34 +9,32 @@ export class VisitorRepository {
   constructor(@Inject(DATABASE_POOL) pool: Pool) { this.pool = pool; }
 
   async getPublishedPoi(poiId: number, languageCode?: string): Promise<ContentVersion | undefined> {
-    const result = await this.pool.query(
-      `(
-        SELECT v.version_id, v.content_id, nc.poi_id, nc.language_code, v.version_number,
-               v.title, v.narration_text, v.status, nc.needs_review, v.selected_voice_id,
-               a.file_path, a.file_format, a.is_valid AS audio_valid, a.is_outdated AS audio_outdated,
-               v.created_at, 0 AS fallback_order
-        FROM content_version v
-        JOIN narration_content nc ON nc.content_id = v.content_id
-        LEFT JOIN audio a ON a.version_id = v.version_id
-        WHERE nc.poi_id = $1 AND v.status = 'PUBLISHED' AND $2::varchar IS NOT NULL
-          AND nc.language_code = $2
-      )
-      UNION ALL
-      (
-        SELECT v.version_id, v.content_id, nc.poi_id, nc.language_code, v.version_number,
-               v.title, v.narration_text, v.status, nc.needs_review, v.selected_voice_id,
-               a.file_path, a.file_format, a.is_valid AS audio_valid, a.is_outdated AS audio_outdated,
-               v.created_at, 1 AS fallback_order
-        FROM content_version v
-        JOIN narration_content nc ON nc.content_id = v.content_id
-        LEFT JOIN audio a ON a.version_id = v.version_id
-        WHERE nc.poi_id = $1 AND v.status = 'PUBLISHED'
-          AND nc.language_code = (SELECT language_code FROM language WHERE is_fallback = TRUE)
-      )
-      ORDER BY fallback_order, created_at DESC
-      LIMIT 1`,
-      [poiId, languageCode ?? null],
-    );
+    const targetLang = languageCode?.trim() || null;
+    const query = targetLang
+      ? `SELECT v.version_id, v.content_id, nc.poi_id, nc.language_code, v.version_number,
+                v.title, v.narration_text, v.status, nc.needs_review, v.selected_voice_id,
+                a.file_path, a.file_format, a.is_valid AS audio_valid, a.is_outdated AS audio_outdated,
+                v.created_at
+         FROM content_version v
+         JOIN narration_content nc ON nc.content_id = v.content_id
+         LEFT JOIN audio a ON a.version_id = v.version_id
+         WHERE nc.poi_id = $1 AND v.status = 'PUBLISHED'
+           AND nc.language_code = $2
+         ORDER BY v.created_at DESC
+         LIMIT 1`
+      : `SELECT v.version_id, v.content_id, nc.poi_id, nc.language_code, v.version_number,
+                v.title, v.narration_text, v.status, nc.needs_review, v.selected_voice_id,
+                a.file_path, a.file_format, a.is_valid AS audio_valid, a.is_outdated AS audio_outdated,
+                v.created_at
+         FROM content_version v
+         JOIN narration_content nc ON nc.content_id = v.content_id
+         LEFT JOIN audio a ON a.version_id = v.version_id
+         WHERE nc.poi_id = $1 AND v.status = 'PUBLISHED'
+           AND nc.language_code = (SELECT language_code FROM language WHERE is_fallback = TRUE)
+         ORDER BY v.created_at DESC
+         LIMIT 1`;
+    const params = targetLang ? [poiId, targetLang] : [poiId];
+    const result = await this.pool.query(query, params);
     const row = result.rows[0];
     if (!row) return undefined;
     return {
@@ -53,6 +51,36 @@ export class VisitorRepository {
       audio: row.file_path ? { filePath: row.file_path, fileFormat: row.file_format, isValid: row.audio_valid, isOutdated: row.audio_outdated } : undefined,
       createdAt: row.created_at.toISOString(),
     };
+  }
+
+  async getPoiLanguages(poiId: number): Promise<{ code: string; name: string; isFallback: boolean; hasVoice: boolean }[]> {
+    const result = await this.pool.query(
+      `SELECT 
+         l.language_code AS code,
+         l.language_name AS name,
+         l.is_fallback AS "isFallback",
+         EXISTS(
+           SELECT 1 
+           FROM narration_content nc
+           JOIN content_version v ON v.content_id = nc.content_id
+           JOIN audio a ON a.version_id = v.version_id
+           WHERE nc.poi_id = $1 
+             AND nc.language_code = l.language_code
+             AND v.status = 'PUBLISHED'
+             AND a.file_path IS NOT NULL
+             AND a.is_valid = TRUE
+         ) AS "hasVoice"
+       FROM language l
+       WHERE l.is_active = TRUE
+       ORDER BY l.is_fallback DESC, l.language_code ASC`,
+      [poiId],
+    );
+    return result.rows.map((row) => ({
+      code: row.code,
+      name: row.name,
+      isFallback: Boolean(row.isFallback),
+      hasVoice: Boolean(row.hasVoice),
+    }));
   }
 
   async resolveQr(qrId: number) {

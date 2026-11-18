@@ -65,7 +65,7 @@ function VisitorApp() {
   const poiParam = params.get('poiId');
   const poiId = poiParam ? Number(poiParam) : null;
   const isQrSource = params.get('source') === 'qr' || params.has('qr');
-  const [language, setLanguage] = useState(params.get('language') ?? 'vi');
+  const [language, setLanguage] = useState(params.get('language') || 'en');
   const [content, setContent] = useState<ApiContent | null>(null);
   const [loading, setLoading] = useState(true);
   const [playing, setPlaying] = useState(false);
@@ -75,6 +75,8 @@ function VisitorApp() {
   const [placesLoading, setPlacesLoading] = useState(true);
   const [placesError, setPlacesError] = useState('');
   const [history, setHistory] = useState<{ title: string; poiId: number; listenedAt: string }[]>([]);
+  const [visitorLanguages, setVisitorLanguages] = useState<ApiLanguage[]>([]);
+  const [poiLanguages, setPoiLanguages] = useState<{ code: string; name: string; isFallback: boolean; hasVoice: boolean }[]>([]);
 
   useEffect(() => {
     const sessionKey = getVisitorSessionKey();
@@ -114,6 +116,28 @@ function VisitorApp() {
 
   useEffect(() => {
     if (!poiId) {
+      setPoiLanguages([]);
+      return;
+    }
+    api.visitorPoiLanguages(poiId)
+      .then((langs) => {
+        setPoiLanguages(langs);
+        const current = langs.find((l) => l.code === language);
+        if (current && !current.hasVoice) {
+          const fallback = langs.find((l) => l.hasVoice)?.code ?? 'en';
+          if (fallback !== language) {
+            setLanguage(fallback);
+            const next = new URL(window.location.href);
+            next.searchParams.set('language', fallback);
+            window.history.replaceState(null, '', next);
+          }
+        }
+      })
+      .catch(() => undefined);
+  }, [poiId]);
+
+  useEffect(() => {
+    if (!poiId) {
       setContent(null);
       setError('');
       setLoading(false);
@@ -127,9 +151,10 @@ function VisitorApp() {
   }, [poiId, language]);
 
   useEffect(() => {
-    void Promise.all([api.visitorLocations(), api.visitorPois()]).then(([nextLocations, nextPois]) => {
+    void Promise.all([api.visitorLocations(), api.visitorPois(), api.languages('')]).then(([nextLocations, nextPois, nextLangs]) => {
       setLocations(nextLocations.filter((location) => location.isActive));
       setPois(nextPois.filter((poi) => poi.isActive));
+      setVisitorLanguages(nextLangs.filter((l) => l.isActive));
     }).catch((reason: unknown) => setPlacesError(reason instanceof Error ? reason.message : 'Không thể tải địa điểm.')).finally(() => setPlacesLoading(false));
     try { setHistory(JSON.parse(localStorage.getItem('audio-guide-history') ?? '[]')); } catch { setHistory([]); }
   }, []);
@@ -154,22 +179,84 @@ function VisitorApp() {
     localStorage.setItem('audio-guide-history', JSON.stringify(next));
   };
 
-  const visitorAudioUrl = content?.audio?.filePath?.startsWith('/media/') ? `${API_URL.replace(/\/api\/?$/, '')}${content.audio.filePath}` : undefined;
+  const visitorAudioUrl = content?.audio?.filePath
+    ? (content.audio.filePath.startsWith('/media/') ? `${API_URL.replace(/\/api\/?$/, '')}${content.audio.filePath}` : content.audio.filePath)
+    : undefined;
   const translate = (translations: { languageCode: string; name: string }[]) => translations.find((item) => item.languageCode === language)?.name ?? translations[0]?.name ?? '';
-  const visitorShell = (children: ReactNode) => <div className="visitor-page"><header className="visitor-nav"><a className="visitor-brand" href="/">audio guide</a><nav className="visitor-nav-links" aria-label="Điều hướng visitor"><a href="/">Khám phá</a><a href="/admin">Content studio</a></nav><label className="visitor-language">Ngôn ngữ<select value={language} onChange={(event) => { setLanguage(event.target.value); const next = new URL(window.location.href); next.searchParams.set('language', event.target.value); window.history.replaceState(null, '', next); }}><option value="vi">Tiếng Việt</option><option value="en">English</option></select></label></header>{children}<footer className="visitor-footer"><a href="/">audio guide</a><span>Thuyết minh đa ngôn ngữ, ngay tại điểm đến.</span></footer></div>;
+  const visitorShell = (children: ReactNode) => (
+    <div className="visitor-page">
+      <header className="visitor-nav">
+        <a className="visitor-brand" href="/">audio guide</a>
+        <nav className="visitor-nav-links" aria-label="Điều hướng visitor">
+          <a href="/">Khám phá</a>
+          <a href="/admin">Content studio</a>
+        </nav>
+        <label className="visitor-language">
+          Ngôn ngữ
+          <select
+            value={language}
+            onChange={(event) => {
+              setLanguage(event.target.value);
+              const next = new URL(window.location.href);
+              next.searchParams.set('language', event.target.value);
+              window.history.replaceState(null, '', next);
+            }}
+          >
+            {poiId && poiLanguages.length > 0
+              ? poiLanguages.map((l) => (
+                  <option key={l.code} value={l.code} disabled={!l.hasVoice}>
+                    {l.name} {!l.hasVoice ? '(Chưa hỗ trợ voice)' : ''}
+                  </option>
+                ))
+              : visitorLanguages.length > 0
+              ? visitorLanguages.map((l) => (
+                  <option key={l.code} value={l.code}>
+                    {l.name}
+                  </option>
+                ))
+              : (
+                <>
+                  <option value="en">English</option>
+                  <option value="vi">Tiếng Việt</option>
+                </>
+              )}
+          </select>
+        </label>
+      </header>
+      {children}
+      <footer className="visitor-footer">
+        <a href="/">audio guide</a>
+        <span>Thuyết minh đa ngôn ngữ, ngay tại điểm đến.</span>
+      </footer>
+    </div>
+  );
   if (!poiId) {
     return visitorShell(<main className="visitor-home"><section className="visitor-hero"><div className="visitor-hero-copy"><h1>Mỗi điểm đến,<br />một câu chuyện riêng.</h1><p>Chọn một nơi, nghe những câu chuyện theo ngôn ngữ của bạn.</p><a className="visitor-primary" href="#visitor-places">Khám phá địa điểm <span aria-hidden="true">↓</span></a></div><div className="visitor-featured" aria-label="Điểm tham quan nổi bật">{placesLoading ? <p>Đang tải điểm tham quan…</p> : pois.length ? pois.slice(0, 3).map((poi, index) => <a key={poi.id} href={`/visitor?poiId=${poi.id}&language=${language}`}><span>0{index + 1}</span><strong>{translate(poi.translations)}</strong><small>{translate(locations.find((location) => location.id === poi.locationId)?.translations ?? [])}</small><span aria-hidden="true">↗</span></a>) : <p>{placesError || 'Địa điểm sắp được cập nhật.'}</p>}</div></section><section className="visitor-home-section" id="visitor-places"><div className="visitor-home-heading"><div><h2>Chọn nơi bạn muốn đến.</h2></div><span>{pois.length} điểm tham quan</span></div>{placesLoading ? <p className="visitor-loading">Đang tải địa điểm…</p> : placesError ? <p className="visitor-empty">{placesError}</p> : locations.length === 0 ? <p className="visitor-empty">Chưa có địa điểm nào được xuất bản.</p> : <div className="visitor-place-list">{locations.map((location, index) => { const placePois = pois.filter((poi) => poi.locationId === location.id); return <article className="visitor-place" key={location.id}><div className="visitor-place-copy"><h3>{translate(location.translations)}</h3><p>{location.translations.find((item) => item.languageCode === language)?.shortDescription ?? 'Khám phá những câu chuyện và điểm tham quan tại đây.'}</p><div className="visitor-place-pois">{placePois.map((poi) => <a key={poi.id} href={`/visitor?poiId=${poi.id}&language=${language}`}>{translate(poi.translations)} <span aria-hidden="true">↗</span></a>)}</div></div><span className="visitor-place-count">{placePois.length} điểm</span></article>; })}</div>}</section>{history.length > 0 && <section className="visitor-home-section visitor-recent"><div className="visitor-home-heading"><div><h2>Lịch sử nghe trên thiết bị.</h2></div><button className="quiet-button" onClick={clearHistory}>Xóa tất cả lịch sử</button></div>{history.map((item) => <a className="visitor-history-row" key={item.poiId} href={`/visitor?poiId=${item.poiId}&language=${language}`}><span>{item.title}</span><small>{new Date(item.listenedAt).toLocaleDateString('vi-VN')}</small><button type="button" className="history-remove-btn" title="Xóa mục này" aria-label="Xóa mục này khỏi lịch sử" onClick={(event) => removeHistoryItem(item.poiId, event)}>×</button><span aria-hidden="true">↗</span></a>)}</section>}</main>);
   }
   return visitorShell(<main className="visitor-main"><a className="visitor-back" href="/">← Tất cả địa điểm</a><div className="visitor-location"><span className="visitor-marker">⌖</span><span>Điểm tham quan #{poiId}</span></div>{loading ? <div className="visitor-loading">Đang tải thuyết minh…</div> : error ? <div className="visitor-error"><h1>Chưa có nội dung cho điểm này.</h1><p>{error}</p><a href="/">Chọn một địa điểm khác</a></div> : content ? <article className="visitor-story"><h1>{content.title}</h1><p className="visitor-narration">{content.narrationText}</p><div className="visitor-listen">{visitorAudioUrl ? <audio controls preload="metadata" src={visitorAudioUrl} aria-label="Audio thuyết minh" onPlay={() => { setPlaying(true); rememberListening(content.title); void api.recordEvent({ eventId: safeRandomUUID(), eventType: 'AUDIO_START', poiId, languageCode: language }); }} onPause={() => setPlaying(false)} /> : <p className="empty-state">Nội dung này chưa có audio.</p>}</div><p className="visitor-hint">Bạn có thể đổi ngôn ngữ ở phía trên để nghe bản dịch tương ứng.</p></article> : null}</main>);
 }
 
-function CatalogPanel({ section, token, onToast, onPoisChange }: { section: string; token: string; onToast: (message: string) => void; onPoisChange?: (pois: ApiPoi[]) => void }) {
+const PRESET_LANGUAGES = [
+  { code: 'vi', name: 'Tiếng Việt', defaultVoice: 'pNInz6obpgDQGcFmaJgB' },
+  { code: 'en', name: 'English', defaultVoice: '21m00Tcm4TlvDq8ikWAM' },
+  { code: 'ja', name: 'Tiếng Nhật (Japanese)', defaultVoice: 'ErXwobaYiN019PkySvjV' },
+  { code: 'ko', name: 'Tiếng Hàn (Korean)', defaultVoice: 'ErXwobaYiN019PkySvjV' },
+  { code: 'zh', name: 'Tiếng Trung (Chinese)', defaultVoice: 'ErXwobaYiN019PkySvjV' },
+  { code: 'fr', name: 'Tiếng Pháp (French)', defaultVoice: 'EXAVITQu4vr4xnSDxMaL' },
+  { code: 'es', name: 'Tiếng Tây Ban Nha (Spanish)', defaultVoice: 'ErXwobaYiN019PkySvjV' },
+  { code: 'de', name: 'Tiếng Đức (German)', defaultVoice: 'VR6AewLTigWG4xSOukaG' },
+  { code: 'ru', name: 'Tiếng Nga (Russian)', defaultVoice: 'ErXwobaYiN019PkySvjV' },
+  { code: 'th', name: 'Tiếng Thái (Thai)', defaultVoice: 'ErXwobaYiN019PkySvjV' },
+];
+
+function CatalogPanel({ section, token, onToast, onPoisChange, onLanguagesChange, onVoicesChange }: { section: string; token: string; onToast: (message: string) => void; onPoisChange?: (pois: ApiPoi[]) => void; onLanguagesChange?: (languages: ApiLanguage[]) => void; onVoicesChange?: (voices: ApiVoice[]) => void }) {
   const [languages, setLanguages] = useState<ApiLanguage[]>([]);
   const [locations, setLocations] = useState<ApiLocation[]>([]);
   const [pois, setPois] = useState<ApiPoi[]>([]);
   const [voices, setVoices] = useState<ApiVoice[]>([]);
+  const [expandedLang, setExpandedLang] = useState<string | null>(null);
   const [entityKind, setEntityKind] = useState<'location' | 'poi'>('poi');
-  const [form, setForm] = useState({ code: 'vi', name: '', nameVi: '', nameEn: '', locationId: '', title: '', voice: '' });
+  const [form, setForm] = useState({ code: 'ja', name: 'Tiếng Nhật (Japanese)', nameVi: '', nameEn: '', locationId: '', title: '', voice: 'ErXwobaYiN019PkySvjV' });
   const [busy, setBusy] = useState(false);
   const [panelMessage, setPanelMessage] = useState('');
   const reload = async () => {
@@ -177,6 +264,8 @@ function CatalogPanel({ section, token, onToast, onPoisChange }: { section: stri
       const [nextLanguages, nextVoices] = await Promise.all([api.languages(token), api.voices(token)]);
       setLanguages(nextLanguages);
       setVoices(nextVoices);
+      onLanguagesChange?.(nextLanguages);
+      onVoicesChange?.(nextVoices);
     }
     if (section === 'Địa điểm & POI') {
       const [nextLocations, nextPois] = await Promise.all([api.locations(token), api.pois(token)]);
@@ -193,6 +282,41 @@ function CatalogPanel({ section, token, onToast, onPoisChange }: { section: stri
       onToast(isActive ? 'Đã tắt bản ghi.' : 'Đã bật bản ghi.');
     } catch (error) {
       onToast(error instanceof Error ? error.message : 'Không thể cập nhật trạng thái');
+    }
+  };
+  const toggleLanguage = async (item: ApiLanguage) => {
+    if (item.isFallback || item.code.toLowerCase() === 'en') {
+      const msg = 'Không thể tắt ngôn ngữ mặc định (tiếng Anh / Fallback).';
+      onToast(msg);
+      window.alert(msg);
+      return;
+    }
+    if (item.isActive) {
+      const confirmed = window.confirm(
+        `Bạn có chắc chắn muốn tắt ngôn ngữ "${item.name}" (${item.code.toUpperCase()})?\n\nCảnh báo: Khách tham quan sẽ không thể tiếp cận các bài thuyết minh thuộc ngôn ngữ này trên trang web.`
+      );
+      if (!confirmed) return;
+    }
+    try {
+      await api.setLanguageActive(token, item.code, !item.isActive);
+      await reload();
+      onToast(item.isActive ? `Đã tắt ngôn ngữ ${item.code.toUpperCase()}.` : `Đã kích hoạt ngôn ngữ ${item.code.toUpperCase()}.`);
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : 'Không thể cập nhật trạng thái ngôn ngữ';
+      onToast(msg);
+      window.alert(msg);
+    }
+  };
+  const deleteVoice = async (id: number) => {
+    if (!window.confirm(`Bạn có chắc chắn muốn xóa Voice #${id}?`)) return;
+    try {
+      await api.deleteVoice(token, id);
+      await reload();
+      onToast(`Đã xóa Voice #${id}.`);
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : 'Không thể xóa voice';
+      onToast(msg);
+      window.alert(msg);
     }
   };
   const deleteLocation = async (id: number) => {
@@ -229,8 +353,17 @@ function CatalogPanel({ section, token, onToast, onPoisChange }: { section: stri
     setBusy(true);
     try {
       if (section === 'Ngôn ngữ & giọng đọc') {
-        if (form.name) await api.createLanguage(token, form.code, form.name);
-        if (form.voice) await api.createVoice(token, form.code, form.voice);
+        const langCode = form.code.trim().toLowerCase();
+        let existingLang = languages.find((l) => l.code.toLowerCase() === langCode);
+        if (!existingLang && form.name.trim()) {
+          existingLang = await api.createLanguage(token, langCode, form.name.trim());
+        }
+        if (form.voice.trim()) {
+          const createdVoice = await api.createVoice(token, langCode, form.voice.trim());
+          if (!existingLang?.defaultVoiceId && createdVoice?.id) {
+            await api.setDefaultVoice(token, langCode, createdVoice.id).catch(() => undefined);
+          }
+        }
       } else if (section === 'Địa điểm & POI') {
         if (entityKind === 'location') {
           const viName = form.nameVi.trim();
@@ -266,7 +399,12 @@ function CatalogPanel({ section, token, onToast, onPoisChange }: { section: stri
         }
       }
       await reload();
-      setForm({ ...form, name: '', nameVi: '', nameEn: '', voice: '' });
+      if (section === 'Ngôn ngữ & giọng đọc') {
+        const nextPreset = PRESET_LANGUAGES.find((p) => p.code !== form.code) ?? PRESET_LANGUAGES[0];
+        setForm((prev) => ({ ...prev, code: nextPreset.code, name: nextPreset.name, voice: nextPreset.defaultVoice }));
+      } else {
+        setForm((prev) => ({ ...prev, nameVi: '', nameEn: '' }));
+      }
       onToast('Đã lưu thay đổi.');
     } catch (error) {
       onToast(error instanceof Error ? error.message : 'Không thể lưu');
@@ -296,9 +434,27 @@ function CatalogPanel({ section, token, onToast, onPoisChange }: { section: stri
       <form className="crud-form" onSubmit={submit}>
         {isLanguage ? (
           <>
-            <label>Mã ngôn ngữ<input value={form.code} onChange={(event) => setForm({ ...form, code: event.target.value })} placeholder="vi" required /></label>
-            <label>Tên ngôn ngữ<input value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} placeholder="Tiếng Việt" /></label>
-            <label>ElevenLabs voice ID<input value={form.voice} onChange={(event) => setForm({ ...form, voice: event.target.value })} placeholder="21m00Tcm4TlvDq8ikWAM" /></label>
+            <label>
+              Chọn ngôn ngữ
+              <select
+                value={form.code}
+                onChange={(event) => {
+                  const val = event.target.value;
+                  const match = PRESET_LANGUAGES.find((p) => p.code === val) ?? PRESET_LANGUAGES[0];
+                  setForm({ ...form, code: match.code, name: match.name, voice: match.defaultVoice });
+                }}
+              >
+                {PRESET_LANGUAGES.map((preset) => (
+                  <option key={preset.code} value={preset.code}>
+                    {preset.name} ({preset.code.toUpperCase()})
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              ElevenLabs voice ID (mặc định gợi ý)
+              <input value={form.voice} onChange={(event) => setForm({ ...form, voice: event.target.value })} placeholder="vd: 21m00Tcm4TlvDq8ikWAM" />
+            </label>
           </>
         ) : entityKind === 'location' ? (
           <>
@@ -322,24 +478,91 @@ function CatalogPanel({ section, token, onToast, onPoisChange }: { section: stri
       <div className="crud-table">
         {isLanguage ? (
           <>
-            {languages.map((item) => (
-              <div className="crud-row" key={item.code}>
-                <strong>{item.code.toUpperCase()}</strong>
-                <span>{item.name}</span>
-                <select value={item.defaultVoiceId ?? ''} onChange={(event) => { if (event.target.value) void api.setDefaultVoice(token, item.code, Number(event.target.value)).then(reload).then(() => onToast('Đã cập nhật voice mặc định.')).catch((error: unknown) => onToast(error instanceof Error ? error.message : 'Không thể cập nhật voice mặc định')); }}>
-                  <option value="">Chọn voice mặc định</option>
-                  {voices.filter((voice) => voice.languageCode === item.code && voice.isAvailable).map((voice) => <option key={voice.id} value={voice.id}>{voice.providerVoiceKey}</option>)}
-                </select>
-                <span className={`status status--${item.isActive ? 'published' : 'draft'}`}>{item.isActive ? 'Hoạt động' : 'Tạm tắt'}</span>
-              </div>
-            ))}
-            {voices.map((voice) => (
-              <div className="crud-row" key={voice.id}>
-                <strong>Voice #{voice.id}</strong>
-                <span>{voice.languageCode} · {voice.providerVoiceKey}</span>
-                <span>{voice.isAvailable ? 'Sẵn sàng' : 'Tắt'}</span>
-              </div>
-            ))}
+            {languages.map((item) => {
+              const langVoices = voices.filter((v) => v.languageCode === item.code);
+              const isExpanded = expandedLang === item.code;
+              return (
+                <div key={item.code} style={{ display: 'contents' }}>
+                  <div className="crud-row">
+                    <strong>{item.code.toUpperCase()}{item.isFallback ? ' (Mặc định)' : ''}</strong>
+                    <span>{item.name}</span>
+                    <span className={`status status--${item.isActive ? 'published' : 'draft'}`}>{item.isActive ? 'Hoạt động' : 'Tạm tắt'}</span>
+                    <button
+                      type="button"
+                      className="quiet-button"
+                      title={item.isFallback || item.code.toLowerCase() === 'en' ? 'Không thể tắt ngôn ngữ mặc định' : undefined}
+                      onClick={() => toggleLanguage(item)}
+                    >
+                      {item.isActive ? 'Tắt' : 'Bật'}
+                    </button>
+                    <button
+                      type="button"
+                      className="quiet-button"
+                      style={isExpanded ? { background: 'var(--cream)', fontWeight: 600 } : {}}
+                      title="Xem và quản lý các giọng đọc của ngôn ngữ này"
+                      onClick={() => setExpandedLang(isExpanded ? null : item.code)}
+                    >
+                      Voices ({langVoices.length}) {isExpanded ? '▲' : '▼'}
+                    </button>
+                  </div>
+
+                  {isExpanded && (
+                    <div style={{ gridColumn: '1 / -1', background: 'var(--paper)', border: '1px solid var(--line)', borderRadius: '8px', padding: '12px 16px', margin: '2px 0 16px' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                        <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--ink)' }}>
+                          Giọng đọc (Voices) của {item.name} ({item.code.toUpperCase()}):
+                        </span>
+                        <span style={{ fontSize: '11px', color: 'var(--muted)' }}>{langVoices.length} voice đã lưu</span>
+                      </div>
+                      {langVoices.length === 0 ? (
+                        <p style={{ margin: 0, fontSize: '12px', color: 'var(--muted)' }}>
+                          Chưa có voice nào cho ngôn ngữ này. Hãy chọn ngôn ngữ và nhập mã ElevenLabs voice ID ở form phía trên để thêm.
+                        </p>
+                      ) : (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                          {langVoices.map((voice) => {
+                            const isDefault = item.defaultVoiceId === voice.id;
+                            return (
+                              <div key={voice.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', background: 'var(--cream)', borderRadius: '6px', fontSize: '12px' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                  <strong>Voice #{voice.id}</strong>
+                                  <code style={{ background: 'var(--paper)', padding: '2px 6px', borderRadius: '4px', border: '1px solid var(--line)' }}>{voice.providerVoiceKey}</code>
+                                  {isDefault ? (
+                                    <span className="status status--published" style={{ fontSize: '10px', padding: '2px 6px' }}>★ Voice mặc định</span>
+                                  ) : (
+                                    <button
+                                      type="button"
+                                      className="quiet-button"
+                                      style={{ fontSize: '11px', padding: '2px 8px' }}
+                                      onClick={() => {
+                                        void api.setDefaultVoice(token, item.code, voice.id)
+                                          .then(reload)
+                                          .then(() => onToast(`Đã chọn Voice #${voice.id} làm mặc định cho ${item.name}.`))
+                                          .catch((error: unknown) => onToast(error instanceof Error ? error.message : 'Không thể cập nhật voice mặc định'));
+                                      }}
+                                    >
+                                      Đặt làm mặc định
+                                    </button>
+                                  )}
+                                </div>
+                                <button
+                                  type="button"
+                                  className="quiet-button"
+                                  style={{ color: 'var(--coral)', borderColor: 'var(--coral)', fontSize: '11px' }}
+                                  onClick={() => deleteVoice(voice.id)}
+                                >
+                                  Xóa voice
+                                </button>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </>
         ) : (
           <>
@@ -494,7 +717,9 @@ function App() {
   const [items, setItems] = useState<ContentItem[]>([]);
   const [voices, setVoices] = useState<ApiVoice[]>([]);
   const [pois, setPois] = useState<ApiPoi[]>([]);
+  const [languages, setLanguages] = useState<ApiLanguage[]>([]);
   const [selectedId, setSelectedId] = useState(1);
+  const [selectedVoiceId, setSelectedVoiceId] = useState<number | undefined>(undefined);
   const [showVisitor, setShowVisitor] = useState(false);
   const [history, setHistory] = useState<ApiReviewEvent[]>([]);
   const [showHistory, setShowHistory] = useState(false);
@@ -513,11 +738,12 @@ function App() {
   useEffect(() => {
     if (!token) return;
     setLoading(true);
-    Promise.all([api.content(token), api.voices(token), api.pois(token)])
-      .then(([content, availableVoices, availablePois]) => {
+    Promise.all([api.content(token), api.voices(token), api.pois(token), api.languages(token)])
+      .then(([content, availableVoices, availablePois, availableLanguages]) => {
         setItems(content.map(mapContent));
         setVoices(availableVoices);
         setPois(availablePois);
+        setLanguages(availableLanguages);
       })
       .catch((error: unknown) => {
         setToken('');
@@ -560,15 +786,23 @@ function App() {
     } catch (error) { setToast(error instanceof Error ? error.message : 'Không thể chuyển trạng thái'); }
   };
 
+  const currentLang = languages.find((item) => item.code.toUpperCase() === selected.language);
+  const currentLangVoices = voices.filter((item) => item.languageCode.toUpperCase() === selected.language && item.isAvailable);
+  const activeVoiceId = selectedVoiceId && currentLangVoices.some((v) => v.id === selectedVoiceId)
+    ? selectedVoiceId
+    : (currentLang?.defaultVoiceId && currentLangVoices.some((v) => v.id === currentLang.defaultVoiceId)
+      ? currentLang.defaultVoiceId
+      : currentLangVoices[0]?.id);
+
   const generateAudio = async () => {
     if (!selected?.versionId) return;
-    const voice = voices.find((item) => item.languageCode.toUpperCase() === selected.language && item.isAvailable);
+    const voice = currentLangVoices.find((item) => item.id === activeVoiceId) ?? currentLangVoices[0];
     if (!voice) { setToast(`Chưa có giọng đọc khả dụng cho ${selected.language}.`); return; }
     try {
       const generated = await api.elevenLabsAudio(token, selected.versionId, voice.id);
       const next = mapContent(generated, selected.id - 1);
       setItems((current) => current.map((item) => item.id === selected.id ? { ...item, ...next, updated: 'Vừa tạo audio ElevenLabs' } : item));
-      setToast('Đã tạo audio thật bằng ElevenLabs.');
+      setToast(`Đã tạo audio bằng ElevenLabs (${voice.providerVoiceKey}).`);
     } catch (error) { setToast(error instanceof Error ? error.message : 'Không thể tạo audio'); }
   };
 
@@ -699,7 +933,7 @@ function App() {
         <section className="workspace">
           <div className="workspace-heading"><div><h2>Những câu chuyện đang chờ bạn hoàn thiện.</h2></div><button className="quiet-button" onClick={() => { setSearch(''); setStatusFilter('ALL'); setToast('Đã xóa bộ lọc.'); }}>Lọc & sắp xếp <span>⌄</span></button></div>
           {toast && <p className="toast" role="status" style={{ margin: '0 0 16px' }}>{toast}</p>}
-          {activeNav === 'Tổng quan' ? <OverviewPanel items={items} pois={pois} voices={voices} token={token} /> : activeNav === 'QR code' ? <QrPanel token={token} pois={pois} onToast={setToast} /> : activeNav === 'Người dùng' ? <UserPanel token={token} onToast={setToast} /> : activeNav !== 'Nội dung' ? <CatalogPanel section={activeNav} token={token} onToast={setToast} onPoisChange={setPois} /> : <div className="content-grid">
+          {activeNav === 'Tổng quan' ? <OverviewPanel items={items} pois={pois} voices={voices} token={token} /> : activeNav === 'QR code' ? <QrPanel token={token} pois={pois} onToast={setToast} /> : activeNav === 'Người dùng' ? <UserPanel token={token} onToast={setToast} /> : activeNav !== 'Nội dung' ? <CatalogPanel section={activeNav} token={token} onToast={setToast} onPoisChange={setPois} onLanguagesChange={setLanguages} onVoicesChange={setVoices} /> : <div className="content-grid">
             <section className="content-list" aria-label="Danh sách nội dung">
               <div className="list-toolbar"><div className="segmented" role="tablist" aria-label="Lọc trạng thái"><button className={statusFilter === 'ALL' ? 'is-selected' : ''} onClick={() => setStatusFilter('ALL')} role="tab" aria-selected={statusFilter === 'ALL'}>Tất cả <span>{items.length.toString().padStart(2, '0')}</span></button><button className={statusFilter === 'PENDING_REVIEW' ? 'is-selected' : ''} onClick={() => setStatusFilter('PENDING_REVIEW')} role="tab" aria-selected={statusFilter === 'PENDING_REVIEW'}>Chờ duyệt <span>{pendingCount.toString().padStart(2, '0')}</span></button><button className={statusFilter === 'PUBLISHED' ? 'is-selected' : ''} onClick={() => setStatusFilter('PUBLISHED')} role="tab" aria-selected={statusFilter === 'PUBLISHED'}>Đã xuất bản <span>{items.filter((item) => item.status === 'Đã xuất bản').length.toString().padStart(2, '0')}</span></button></div><label className="search-control"><Icon>⌕</Icon><input aria-label="Tìm kiếm nội dung" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Tìm kiếm" /></label></div>
               <div className="list-items">{visibleItems.map((item) => <button className={`content-row ${selected.id === item.id ? 'is-selected' : ''}`} key={item.id} onClick={() => { setSelectedId(item.id); setShowVisitor(false); setToast(''); }}><span className="row-index">0{item.id}</span><span className="row-main"><strong>{item.title}</strong><small>{item.place}</small></span><span className="row-meta"><span className="language-chip">{item.language}</span><StatusBadge status={item.status} /></span><span className="row-time">{item.updated}</span></button>)}</div>
@@ -722,7 +956,26 @@ function App() {
                   <>
                     <button className="quiet-button" onClick={saveContent}>Lưu nội dung</button>
                     <label className="upload-button">Upload audio<input type="file" accept="audio/mp3,audio/mpeg,.mp3" onChange={uploadAudio} /></label>
-                    <button className="quiet-button" onClick={generateAudio}>{selected.hasAudio ? 'Tạo lại audio ElevenLabs' : 'Tạo audio ElevenLabs'}</button>
+                    <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                      {currentLangVoices.length > 0 && (
+                        <select
+                          value={activeVoiceId ?? ''}
+                          onChange={(e) => setSelectedVoiceId(Number(e.target.value))}
+                          style={{ minHeight: '34px', padding: '0 8px', borderRadius: '6px', border: '1px solid var(--line)', background: 'var(--paper)', fontSize: '11px', color: 'var(--ink)' }}
+                          title="Chọn giọng đọc cho bản ghi này"
+                        >
+                          {currentLangVoices.map((v) => {
+                            const isDefault = currentLang?.defaultVoiceId === v.id;
+                            return (
+                              <option key={v.id} value={v.id}>
+                                {v.providerVoiceKey} {isDefault ? '(Mặc định)' : ''}
+                              </option>
+                            );
+                          })}
+                        </select>
+                      )}
+                      <button className="quiet-button" onClick={generateAudio}>{selected.hasAudio ? 'Tạo lại audio ElevenLabs' : 'Tạo audio ElevenLabs'}</button>
+                    </div>
                   </>
                 )}
                 {selected.status !== 'Đã xuất bản' && selected.status !== 'Chờ duyệt' && (
@@ -747,7 +1000,7 @@ function App() {
 
       {showVisitor && <div className="visitor-overlay" role="dialog" aria-modal="true" aria-labelledby="visitor-title"><div className="visitor-card"><button className="close-button" aria-label="Đóng preview" onClick={() => setShowVisitor(false)}>×</button><span className="visitor-label">Visitor preview · {selected.language}</span><h2 id="visitor-title">{selected.title}</h2><p>{selected.body}</p><div className="visitor-player">{selected.audioUrl ? <audio controls preload="metadata" src={selected.audioUrl} aria-label="Audio thuyết minh" /> : <p className="empty-state">Chưa có audio thực. Hãy upload file hoặc tạo bằng ElevenLabs.</p>}</div></div></div>}
       {showHistory && <div className="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="history-title"><div className="modal-card history-card"><button type="button" className="close-button" aria-label="Đóng lịch sử" onClick={() => setShowHistory(false)}>×</button><h2 id="history-title">Lịch sử workflow.</h2><div className="history-list">{history.length ? history.map((event) => <div className="history-row" key={`${event.eventType}-${event.actedAt}`}><strong>{event.eventType}</strong><span>{new Date(event.actedAt).toLocaleString('vi-VN')}</span><small>{event.reason ?? `Actor #${event.actorUserId}`}</small></div>) : <p className="empty-state">Chưa có lịch sử.</p>}</div></div></div>}
-      {showCreate && <div className="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="create-title"><form className="modal-card" onSubmit={createContent}><button type="button" className="close-button" aria-label="Đóng form tạo nội dung" onClick={() => setShowCreate(false)}>×</button><h2 id="create-title">Tạo nội dung mới.</h2><label>Điểm tham quan<select value={newContent.poiId} onChange={(event) => setNewContent({ ...newContent, poiId: event.target.value })} required><option value="">Chọn POI</option>{pois.map((poi) => { const name = poi.translations.find((item) => item.languageCode === 'vi')?.name ?? poi.translations.find((item) => item.languageCode === 'en')?.name ?? 'Unnamed'; return <option key={poi.id} value={poi.id}>POI #{poi.id} · {name}</option>; })}</select></label><label>Ngôn ngữ<select value={newContent.languageCode} onChange={(event) => setNewContent({ ...newContent, languageCode: event.target.value })}><option value="vi">Tiếng Việt</option><option value="en">English</option></select></label><label>Tiêu đề<input value={newContent.title} onChange={(event) => setNewContent({ ...newContent, title: event.target.value })} placeholder="Cổng thành phía Đông" required /></label><label>Nội dung thuyết minh<textarea value={newContent.narrationText} onChange={(event) => setNewContent({ ...newContent, narrationText: event.target.value })} rows={5} placeholder="Nhập lời thuyết minh..." required /></label><div className="modal-actions"><button type="button" className="quiet-button" onClick={() => setShowCreate(false)}>Hủy</button><button type="submit" className="primary-button">Tạo bản nháp</button></div></form></div>}
+      {showCreate && <div className="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="create-title"><form className="modal-card" onSubmit={createContent}><button type="button" className="close-button" aria-label="Đóng form tạo nội dung" onClick={() => setShowCreate(false)}>×</button><h2 id="create-title">Tạo nội dung mới.</h2><label>Điểm tham quan<select value={newContent.poiId} onChange={(event) => setNewContent({ ...newContent, poiId: event.target.value })} required><option value="">Chọn POI</option>{pois.map((poi) => { const name = poi.translations.find((item) => item.languageCode === 'vi')?.name ?? poi.translations.find((item) => item.languageCode === 'en')?.name ?? 'Unnamed'; return <option key={poi.id} value={poi.id}>POI #{poi.id} · {name}</option>; })}</select></label><label>Ngôn ngữ<select value={newContent.languageCode} onChange={(event) => setNewContent({ ...newContent, languageCode: event.target.value })}>{languages.filter((l) => l.isActive).map((lang) => <option key={lang.code} value={lang.code}>{lang.name} ({lang.code.toUpperCase()}){lang.isFallback ? ' · Mặc định' : ''}</option>)}</select></label><label>Tiêu đề<input value={newContent.title} onChange={(event) => setNewContent({ ...newContent, title: event.target.value })} placeholder="Cổng thành phía Đông" required /></label><label>Nội dung thuyết minh<textarea value={newContent.narrationText} onChange={(event) => setNewContent({ ...newContent, narrationText: event.target.value })} rows={5} placeholder="Nhập lời thuyết minh..." required /></label><div className="modal-actions"><button type="button" className="quiet-button" onClick={() => setShowCreate(false)}>Hủy</button><button type="submit" className="primary-button">Tạo bản nháp</button></div></form></div>}
     </div>
   );
 }

@@ -13,6 +13,10 @@ export class VisitorService {
     return content;
   }
 
+  getPoiLanguages(poiId: number) {
+    return this.repository.getPoiLanguages(poiId);
+  }
+
   async resolveQr(qrId: number) {
     const qr = await this.repository.resolveQr(qrId);
     if (!qr) throw new NotFoundException(`QR code '${qrId}' was not found`);

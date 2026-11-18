@@ -22,6 +22,44 @@ export class CatalogService {
     }
   }
 
+  async setLanguageActive(code: string, dto: UpdateActiveDto) {
+    const language = await this.repository.getLanguage(code);
+    if (!language) {
+      throw new NotFoundException(`Language '${code}' was not found`);
+    }
+    if (!dto.isActive && (language.isFallback || language.code.toLowerCase() === 'en')) {
+      throw new BadRequestException('Không được phép tắt ngôn ngữ mặc định (tiếng Anh / Fallback).');
+    }
+    return this.repository.setLanguageActive(code, dto.isActive);
+  }
+
+  async updateLanguage(code: string, dto: { name?: string }) {
+    const language = await this.repository.getLanguage(code);
+    if (!language) {
+      throw new NotFoundException(`Language '${code}' was not found`);
+    }
+    if (!dto.name || !dto.name.trim()) {
+      throw new BadRequestException('Tên ngôn ngữ không được để trống');
+    }
+    return this.repository.updateLanguage(code, dto.name.trim());
+  }
+
+  async deleteLanguage(code: string): Promise<{ deleted: boolean }> {
+    const language = await this.repository.getLanguage(code);
+    if (!language) {
+      throw new NotFoundException(`Language '${code}' was not found`);
+    }
+    if (language.isFallback || code.toLowerCase() === 'en') {
+      throw new BadRequestException('Không thể xóa ngôn ngữ mặc định (tiếng Anh / Fallback).');
+    }
+    const deps = await this.repository.countLanguageDependencies(code);
+    if (deps.narrationCount > 0 || deps.locationCount > 0 || deps.poiCount > 0) {
+      throw new BadRequestException('Ngôn ngữ này đang có bài viết hoặc bản dịch liên kết, không thể xóa. Đề xuất chuyển sang trạng thái Tạm tắt.');
+    }
+    await this.repository.deleteLanguage(code);
+    return { deleted: true };
+  }
+
   async listLocations() {
     return this.repository.listLocations();
   }
@@ -109,6 +147,15 @@ export class CatalogService {
       catch (error) { throw new BadRequestException(error instanceof Error ? error.message : 'Unable to create voice'); }
     }
 
+  async deleteVoice(voiceId: number): Promise<{ deleted: boolean }> {
+    try {
+      await this.repository.deleteVoice(voiceId);
+      return { deleted: true };
+    } catch (error) {
+      throw new BadRequestException(error instanceof Error ? error.message : 'Unable to delete voice');
+    }
+  }
+
   async setDefaultVoice(languageCode: string, voiceId: number) {
     try { return await this.repository.setDefaultVoice(languageCode, voiceId); }
     catch (error) { throw new BadRequestException(error instanceof Error ? error.message : 'Unable to set default voice'); }
@@ -124,7 +171,7 @@ export class CatalogService {
       if (!publicVisitorBase) throw new BadRequestException('PUBLIC_VISITOR_URL must be configured outside Vercel');
       const visitorUrl = new URL(publicVisitorBase);
       visitorUrl.searchParams.set('poiId', String(poiId));
-      visitorUrl.searchParams.set('language', process.env.DEFAULT_VISITOR_LANGUAGE ?? 'vi');
+      visitorUrl.searchParams.set('language', process.env.DEFAULT_VISITOR_LANGUAGE ?? 'en');
       visitorUrl.searchParams.set('source', 'qr');
       return await this.repository.upsertQr(poiId, visitorUrl.toString(), dto.imagePath);
     } catch (error) {
