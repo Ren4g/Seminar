@@ -42,6 +42,16 @@ export class ContentService {
     if (!version) throw new BadRequestException('Only DRAFT or REJECTED versions can be edited');
     return version;
   }
+  async confirmReviewed(id: number, actorUserId: number) {
+    try {
+      const version = await this.repository.confirmReviewed(id, actorUserId);
+      if (!version) throw new NotFoundException(`Content version '${id}' was not found`);
+      return version;
+    } catch (error) {
+      if (error instanceof NotFoundException) throw error;
+      throw new BadRequestException(error instanceof Error ? error.message : 'Unable to confirm review');
+    }
+  }
   async transition(id: number, action: 'submit' | 'withdraw' | 'approve' | 'reject' | 'publish' | 'unpublish' | 'republish', actorUserId: number, reason?: string) {
     try {
       const version = await this.repository.transition(id, action, actorUserId, reason);
