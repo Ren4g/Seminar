@@ -358,8 +358,8 @@ export class ContentRepository {
 
   private targetStatus(from: string, action: string): string | undefined {
     const transitions: Record<string, Record<string, string>> = {
-      DRAFT: { submit: 'PENDING_REVIEW', publish: 'PUBLISHED' },
-      REJECTED: { submit: 'PENDING_REVIEW', publish: 'PUBLISHED' },
+      DRAFT: { submit: 'PENDING_REVIEW' },
+      REJECTED: { submit: 'PENDING_REVIEW' },
       PENDING_REVIEW: { withdraw: 'DRAFT', approve: 'APPROVED', reject: 'REJECTED' },
       APPROVED: { publish: 'PUBLISHED' },
       PUBLISHED: { unpublish: 'UNPUBLISHED' },

@@ -29,6 +29,8 @@ async function migrate(): Promise<void> {
     await pool.query(platformMigration);
     const visitorPresenceMigration = await readFile(resolve(__dirname, '../../migrations/002_visitor_presence.sql'), 'utf8');
     await pool.query(visitorPresenceMigration);
+    const reviewHistoryMigration = await readFile(resolve(__dirname, '../../migrations/003_review_history_mark_reviewed.sql'), 'utf8');
+    await pool.query(reviewHistoryMigration);
     console.log(`Applied database schema from ${schemaPath}`);
   } finally {
     await pool.end();
