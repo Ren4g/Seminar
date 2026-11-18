@@ -65,6 +65,14 @@ export class ContentService {
     } catch (error) {
       if (error instanceof NotFoundException) throw error;
       throw new BadRequestException(error instanceof Error ? error.message : 'Unable to delete content version');
+  async confirmReviewed(id: number, actorUserId: number) {
+    try {
+      const version = await this.repository.confirmReviewed(id, actorUserId);
+      if (!version) throw new NotFoundException(`Content version '${id}' was not found`);
+      return version;
+    } catch (error) {
+      if (error instanceof NotFoundException) throw error;
+      throw new BadRequestException(error instanceof Error ? error.message : 'Unable to confirm review');
     }
   }
   async transition(id: number, action: 'submit' | 'withdraw' | 'approve' | 'reject' | 'publish' | 'unpublish' | 'republish', actorUserId: number, reason?: string) {
