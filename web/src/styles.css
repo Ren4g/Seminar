@@ -119,7 +119,7 @@ h2 { font-size: clamp(24px, 3vw, 37px); max-width: 620px; line-height: 1.08; let
 .quiet-button span { margin-left: 16px; color: var(--muted); }
 .quiet-button:hover, .search-button:hover { border-color: var(--teal); }
 .content-grid { display: grid; grid-template-columns: minmax(0, 1.18fr) minmax(360px, .82fr); gap: 20px; }
-.content-list, .detail-panel { background: var(--paper); border: 1px solid var(--line); border-radius: var(--radius-lg); }
+.content-list, .detail-panel { background: var(--paper); border: 1px solid var(--line); border-radius: var(--radius-lg); min-width: 0; }
 .content-list { overflow: clip; }
 .list-toolbar { padding: 16px 16px; border-bottom: 1px solid var(--line); display: flex; justify-content: space-between; gap: 16px; }
 .segmented { display: flex; gap: 4px; }
@@ -166,7 +166,8 @@ h2 { font-size: clamp(24px, 3vw, 37px); max-width: 620px; line-height: 1.08; let
 .audio-progress i { width: 95px; height: 3px; display: inline-block; background: var(--progress); border-radius: 2px; position: relative; }
 .audio-progress i::before { content: ""; width: 35%; height: 100%; display: block; background: var(--coral); border-radius: inherit; }
 .volume-button { border: 0; background: transparent; color: var(--muted); cursor: pointer; font-size: 18px; }
-.detail-actions { display: flex; justify-content: flex-end; gap: 8px; }
+.detail-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; margin-top: 16px; }
+.detail-actions button, .detail-actions .upload-button { white-space: nowrap; }
 .upload-button { display: inline-flex; align-items: center; padding: 8px 12px; border: 1px solid var(--line); border-radius: 8px; color: var(--ink); background: var(--paper); cursor: pointer; font-size: 11px; }
 .upload-button input { display: none; }
 .toast { color: var(--published); font-size: 11px; text-align: right; margin-top: 12px; }

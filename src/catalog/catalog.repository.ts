@@ -155,8 +155,24 @@ export class CatalogRepository {
     return Number(result.rows[0]?.count ?? 0);
   }
 
+  async hasPublishedContentByPoi(poiId: number): Promise<boolean> {
+    const result = await this.pool.query<{ count: string }>(
+      `SELECT COUNT(*)::text AS count
+       FROM narration_content nc
+       JOIN content_version v ON v.content_id = nc.content_id
+       WHERE nc.poi_id = $1 AND v.status = 'PUBLISHED'`,
+      [poiId],
+    );
+    return Number(result.rows[0]?.count ?? 0) > 0;
+  }
+
   async deleteLocation(id: number): Promise<boolean> {
     const result = await this.pool.query('DELETE FROM location WHERE location_id = $1 RETURNING location_id', [id]);
+    return (result.rowCount ?? 0) > 0;
+  }
+
+  async deletePoi(id: number): Promise<boolean> {
+    const result = await this.pool.query('DELETE FROM poi WHERE poi_id = $1 RETURNING poi_id', [id]);
     return (result.rowCount ?? 0) > 0;
   }
 

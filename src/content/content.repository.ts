@@ -170,6 +170,44 @@ export class ContentRepository {
     return this.find(versionId);
   }
 
+  async delete(versionId: number): Promise<boolean> {
+    const client = await this.pool.connect();
+    try {
+      await client.query('BEGIN');
+      const version = await client.query<{ status: string; content_id: string }>(
+        'SELECT status, content_id FROM content_version WHERE version_id = $1 FOR UPDATE',
+        [versionId],
+      );
+      if (!version.rows[0]) {
+        await client.query('ROLLBACK');
+        return false;
+      }
+      const status = version.rows[0].status;
+      if (status === 'PUBLISHED') {
+        throw new Error('Bài đang ở trạng thái "Đã xuất bản" cho du khách xem nên không thể xóa trực tiếp. Vui lòng bấm "Gỡ xuất bản" trước khi xóa.');
+      }
+      await client.query(
+        'UPDATE content_version SET translation_source_version_id = NULL WHERE translation_source_version_id = $1',
+        [versionId],
+      );
+      const result = await client.query('DELETE FROM content_version WHERE version_id = $1', [versionId]);
+      const remaining = await client.query<{ count: string }>(
+        'SELECT COUNT(*)::text AS count FROM content_version WHERE content_id = $1',
+        [version.rows[0].content_id],
+      );
+      if (Number(remaining.rows[0].count) === 0) {
+        await client.query('DELETE FROM narration_content WHERE content_id = $1', [version.rows[0].content_id]);
+      }
+      await client.query('COMMIT');
+      return (result.rowCount ?? 0) > 0;
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
+
   async saveTtsAudio(versionId: number, voiceId: number, filePath: string, fileSize: number): Promise<ContentVersion | undefined> {
     const client = await this.pool.connect();
     try {

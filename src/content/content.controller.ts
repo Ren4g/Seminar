@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, ParseIntPipe, Patch, Post, Query, Req, UploadedFile, UseGuards, UseInterceptors } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, ParseIntPipe, Patch, Post, Query, Req, UploadedFile, UseGuards, UseInterceptors } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { Roles, } from '../auth/roles.decorator';
@@ -40,6 +40,9 @@ export class ContentController {
   @Roles('ADMIN', 'CONTENT_MANAGER')
   update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateContentDto) { return this.service.update(id, dto); }
 
+  @Delete(':id')
+  @Roles('ADMIN', 'CONTENT_MANAGER')
+  delete(@Param('id', ParseIntPipe) id: number) { return this.service.delete(id); }
   @Post(':id/confirm-reviewed')
   @Roles('ADMIN', 'CONTENT_MANAGER')
   confirmReviewed(@Param('id', ParseIntPipe) id: number, @Req() req: AuthenticatedRequest) { return this.service.confirmReviewed(id, req.user.userId); }

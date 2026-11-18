@@ -85,6 +85,17 @@ export class CatalogService {
     return { deleted: true };
   }
 
+  async deletePoi(id: number): Promise<{ deleted: boolean }> {
+    const poi = await this.repository.getPoi(id);
+    if (!poi) throw new NotFoundException(`POI '${id}' was not found`);
+    const hasPublished = await this.repository.hasPublishedContentByPoi(id);
+    if (hasPublished) {
+      throw new BadRequestException('Điểm tham quan (POI) đang có nội dung đã xuất bản, không thể xóa. Vui lòng gỡ xuất bản nội dung trước.');
+    }
+    await this.repository.deletePoi(id);
+    return { deleted: true };
+  }
+
   async setPoiActive(id: number, dto: UpdateActiveDto) {
       const poi = await this.repository.setPoiActive(id, dto.isActive);
       if (!poi) throw new NotFoundException(`POI '${id}' was not found`);
@@ -114,6 +125,7 @@ export class CatalogService {
       const visitorUrl = new URL(publicVisitorBase);
       visitorUrl.searchParams.set('poiId', String(poiId));
       visitorUrl.searchParams.set('language', process.env.DEFAULT_VISITOR_LANGUAGE ?? 'vi');
+      visitorUrl.searchParams.set('source', 'qr');
       return await this.repository.upsertQr(poiId, visitorUrl.toString(), dto.imagePath);
     } catch (error) {
       if (error instanceof BadRequestException) throw error;
