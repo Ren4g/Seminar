@@ -43,6 +43,9 @@ export class ContentController {
   @Delete(':id')
   @Roles('ADMIN', 'CONTENT_MANAGER')
   delete(@Param('id', ParseIntPipe) id: number) { return this.service.delete(id); }
+  @Post(':id/confirm-reviewed')
+  @Roles('ADMIN', 'CONTENT_MANAGER')
+  confirmReviewed(@Param('id', ParseIntPipe) id: number, @Req() req: AuthenticatedRequest) { return this.service.confirmReviewed(id, req.user.userId); }
 
   @Post(':id/submit')
   @Roles('ADMIN', 'CONTENT_MANAGER')

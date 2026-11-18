@@ -162,7 +162,7 @@ CREATE TABLE review_history (
     version_id     BIGINT      NOT NULL REFERENCES content_version(version_id) ON DELETE CASCADE,
     actor_user_id  BIGINT      NOT NULL REFERENCES app_user(user_id),
     event_type     VARCHAR(20) NOT NULL
-        CHECK (event_type IN ('SUBMIT','WITHDRAW','APPROVE','REJECT','PUBLISH','UNPUBLISH','REPUBLISH')),
+        CHECK (event_type IN ('SUBMIT','WITHDRAW','APPROVE','REJECT','PUBLISH','UNPUBLISH','REPUBLISH','MARK_REVIEWED')),
     reason         TEXT,
     acted_at       TIMESTAMPTZ NOT NULL DEFAULT now()
 );

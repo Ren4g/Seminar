@@ -56,6 +56,28 @@ export class ContentService {
   private readonly repository: ContentRepository;
   constructor(repository: ContentRepository) { this.repository = repository; }
 
+  private async loadSampleAudio(): Promise<Buffer | undefined> {
+    const configuredPath = process.env.TTS_FALLBACK_AUDIO_PATH;
+    const candidatePaths = [
+      ...(configuredPath ? [path.resolve(configuredPath)] : []),
+      path.resolve('..', 'am_thanh', 'mp3', 'Download1.mp3'),
+      path.resolve(process.cwd(), '..', 'am_thanh', 'mp3', 'Download1.mp3'),
+      path.resolve('D:/vscode/seminar/am_thanh/mp3/Download1.mp3'),
+      path.resolve('am_thanh', 'mp3', 'Download1.mp3'),
+      path.resolve('..', 'am_thanh', 'mp3', 'Download.mp3'),
+      path.resolve('D:/vscode/seminar/am_thanh/mp3/Download.mp3'),
+    ];
+    for (const samplePath of candidatePaths) {
+      try {
+        const sample = await readFile(samplePath);
+        if (sample.length > 0) return sample;
+      } catch {
+        // Try the next configured or legacy sample location.
+      }
+    }
+    return undefined;
+  }
+
   list(status?: string) { return this.repository.list(status); }
   async find(id: number) {
     const version = await this.repository.find(id);
@@ -138,6 +160,17 @@ export class ContentService {
       throw new BadRequestException(error instanceof Error ? error.message : 'Unable to delete content version');
     }
   }
+
+  async confirmReviewed(id: number, actorUserId: number) {
+    try {
+      const version = await this.repository.confirmReviewed(id, actorUserId);
+      if (!version) throw new NotFoundException(`Content version '${id}' was not found`);
+      return version;
+    } catch (error) {
+      if (error instanceof NotFoundException) throw error;
+      throw new BadRequestException(error instanceof Error ? error.message : 'Unable to confirm review');
+    }
+  }
   async transition(id: number, action: 'submit' | 'withdraw' | 'approve' | 'reject' | 'publish' | 'unpublish' | 'republish', actorUserId: number, reason?: string) {
     try {
       const version = await this.repository.transition(id, action, actorUserId, reason);
@@ -205,26 +238,10 @@ export class ContentService {
 
       // 3. Tầng 3: Chế độ Mock / Test cục bộ: nếu không có mạng hoặc gọi lỗi thì lấy file audio mẫu có sẵn trong dự án
       if (!audio || audio.length === 0) {
-        const candidatePaths = [
-          path.resolve('..', 'am_thanh', 'mp3', 'Download1.mp3'),
-          path.resolve(process.cwd(), '..', 'am_thanh', 'mp3', 'Download1.mp3'),
-          path.resolve('D:/vscode/seminar/am_thanh/mp3/Download1.mp3'),
-          path.resolve('am_thanh', 'mp3', 'Download1.mp3'),
-          path.resolve('..', 'am_thanh', 'mp3', 'Download.mp3'),
-          path.resolve('D:/vscode/seminar/am_thanh/mp3/Download.mp3'),
-        ];
-        for (const samplePath of candidatePaths) {
-          try {
-            audio = await readFile(samplePath);
-            if (audio && audio.length > 0) break;
-          } catch {
-            // tiếp tục tìm đường dẫn khác
-          }
-        }
-        // Nếu vẫn không tìm thấy file trên đĩa thì tạo buffer mp3 dummy
-        if (!audio || audio.length === 0) {
-          audio = Buffer.from('ID3\x04\x00\x00\x00\x00\x00#TSSE\x00\x00\x00\x0f\x00\x00\x03Lavf58.29.100\x00\xff\xfb\x90d\x00\x00');
-        }
+        audio = await this.loadSampleAudio();
+      }
+      if (!audio || audio.length === 0) {
+        throw new BadRequestException('ElevenLabs could not generate audio and no sample MP3 is configured. Set TTS_FALLBACK_AUDIO_PATH or configure ELEVENLABS_API_KEY.');
       }
 
       const mediaRoot = path.resolve(process.env.MEDIA_DIR ?? 'storage');
