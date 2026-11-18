@@ -446,7 +446,7 @@ h2 { font-size: clamp(24px, 3vw, 37px); max-width: 620px; line-height: 1.08; let
 .visitor-detail { width: min(100% - 40px, 720px); margin: 0 auto; flex: 1; padding: 12px 0 112px; }
 .visitor-detail-back { display: inline-flex; align-items: center; gap: 8px; margin: 0 0 16px; color: var(--ink); text-decoration: none; font-size: 13px; }
 .visitor-detail-back span { font-size: 18px; }
-.visitor-cover { width: 100%; aspect-ratio: 16 / 10; border-radius: 14px; background: #d6ddd7 url('/media/img/Hoi-An-Lantern-Festival-1.jpg') center 48% / cover no-repeat; }
+.visitor-cover { width: 100%; aspect-ratio: 16 / 10; border-radius: 14px; background: #d6ddd7 url('/img/Hoi-An-Lantern-Festival-1.jpg') center 48% / cover no-repeat; }
 .visitor-detail-content { padding: 18px 0 28px; }
 .visitor-detail-content > .visitor-fallback-note { margin: 0 0 16px; padding: 9px 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--paper); color: var(--muted); font-size: 12px; }
 .visitor-kicker { color: var(--muted); font-size: 11px; letter-spacing: .04em; }
