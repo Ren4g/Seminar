@@ -78,6 +78,11 @@ export class CatalogController {
   @Roles('ADMIN', 'CONTENT_MANAGER')
   setPoiActive(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateActiveDto) { return this.service.setPoiActive(id, dto); }
 
+  @Delete('pois/:id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN')
+  deletePoi(@Param('id', ParseIntPipe) id: number) { return this.service.deletePoi(id); }
+
   @Get('voices')
   listVoices() { return this.service.listVoices(); }
 

@@ -22,11 +22,22 @@ type ContentItem = {
   audioUrl?: string;
 };
 
+function safeRandomUUID(): string {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID();
+  }
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+    const r = (Math.random() * 16) | 0;
+    const v = c === 'x' ? r : (r & 0x3) | 0x8;
+    return v.toString(16);
+  });
+}
+
 function getVisitorSessionKey(): string {
   const key = 'audio-guide-session';
   const existing = sessionStorage.getItem(key);
   if (existing) return existing;
-  const created = crypto.randomUUID();
+  const created = safeRandomUUID();
   sessionStorage.setItem(key, created);
   return created;
 }
@@ -53,6 +64,7 @@ function VisitorApp() {
   const params = new URLSearchParams(window.location.search);
   const poiParam = params.get('poiId');
   const poiId = poiParam ? Number(poiParam) : null;
+  const isQrSource = params.get('source') === 'qr' || params.has('qr');
   const [language, setLanguage] = useState(params.get('language') ?? 'vi');
   const [content, setContent] = useState<ApiContent | null>(null);
   const [loading, setLoading] = useState(true);
@@ -80,14 +92,33 @@ function VisitorApp() {
   }, []);
 
   useEffect(() => {
+    const sessionKey = getVisitorSessionKey();
+    void api.recordEvent({
+      eventId: safeRandomUUID(),
+      eventType: 'PAGE_VIEW',
+      poiId: poiId ?? undefined,
+      languageCode: language,
+      anonymousSessionKey: sessionKey,
+    }).catch(() => undefined);
+
+    if (isQrSource) {
+      void api.recordEvent({
+        eventId: safeRandomUUID(),
+        eventType: 'QR_OPEN',
+        poiId: poiId ?? undefined,
+        languageCode: language,
+        anonymousSessionKey: sessionKey,
+      }).catch(() => undefined);
+    }
+  }, [poiId]);
+
+  useEffect(() => {
     if (!poiId) {
       setContent(null);
       setError('');
       setLoading(false);
       return;
     }
-    const sessionKey = getVisitorSessionKey();
-    void api.recordEvent({ eventId: crypto.randomUUID(), eventType: 'PAGE_VIEW', poiId, languageCode: language, anonymousSessionKey: sessionKey }).catch(() => undefined);
     setLoading(true);
     api.visitorContent(poiId, language)
       .then((nextContent) => { setContent(nextContent); setError(''); })
@@ -129,24 +160,40 @@ function VisitorApp() {
   if (!poiId) {
     return visitorShell(<main className="visitor-home"><section className="visitor-hero"><div className="visitor-hero-copy"><h1>Mỗi điểm đến,<br />một câu chuyện riêng.</h1><p>Chọn một nơi, nghe những câu chuyện theo ngôn ngữ của bạn.</p><a className="visitor-primary" href="#visitor-places">Khám phá địa điểm <span aria-hidden="true">↓</span></a></div><div className="visitor-featured" aria-label="Điểm tham quan nổi bật">{placesLoading ? <p>Đang tải điểm tham quan…</p> : pois.length ? pois.slice(0, 3).map((poi, index) => <a key={poi.id} href={`/visitor?poiId=${poi.id}&language=${language}`}><span>0{index + 1}</span><strong>{translate(poi.translations)}</strong><small>{translate(locations.find((location) => location.id === poi.locationId)?.translations ?? [])}</small><span aria-hidden="true">↗</span></a>) : <p>{placesError || 'Địa điểm sắp được cập nhật.'}</p>}</div></section><section className="visitor-home-section" id="visitor-places"><div className="visitor-home-heading"><div><h2>Chọn nơi bạn muốn đến.</h2></div><span>{pois.length} điểm tham quan</span></div>{placesLoading ? <p className="visitor-loading">Đang tải địa điểm…</p> : placesError ? <p className="visitor-empty">{placesError}</p> : locations.length === 0 ? <p className="visitor-empty">Chưa có địa điểm nào được xuất bản.</p> : <div className="visitor-place-list">{locations.map((location, index) => { const placePois = pois.filter((poi) => poi.locationId === location.id); return <article className="visitor-place" key={location.id}><div className="visitor-place-copy"><h3>{translate(location.translations)}</h3><p>{location.translations.find((item) => item.languageCode === language)?.shortDescription ?? 'Khám phá những câu chuyện và điểm tham quan tại đây.'}</p><div className="visitor-place-pois">{placePois.map((poi) => <a key={poi.id} href={`/visitor?poiId=${poi.id}&language=${language}`}>{translate(poi.translations)} <span aria-hidden="true">↗</span></a>)}</div></div><span className="visitor-place-count">{placePois.length} điểm</span></article>; })}</div>}</section>{history.length > 0 && <section className="visitor-home-section visitor-recent"><div className="visitor-home-heading"><div><h2>Lịch sử nghe trên thiết bị.</h2></div><button className="quiet-button" onClick={clearHistory}>Xóa tất cả lịch sử</button></div>{history.map((item) => <a className="visitor-history-row" key={item.poiId} href={`/visitor?poiId=${item.poiId}&language=${language}`}><span>{item.title}</span><small>{new Date(item.listenedAt).toLocaleDateString('vi-VN')}</small><button type="button" className="history-remove-btn" title="Xóa mục này" aria-label="Xóa mục này khỏi lịch sử" onClick={(event) => removeHistoryItem(item.poiId, event)}>×</button><span aria-hidden="true">↗</span></a>)}</section>}</main>);
   }
-  return visitorShell(<main className="visitor-main"><a className="visitor-back" href="/">← Tất cả địa điểm</a><div className="visitor-location"><span className="visitor-marker">⌖</span><span>Điểm tham quan #{poiId}</span></div>{loading ? <div className="visitor-loading">Đang tải thuyết minh…</div> : error ? <div className="visitor-error"><h1>Chưa có nội dung cho điểm này.</h1><p>{error}</p><a href="/">Chọn một địa điểm khác</a></div> : content ? <article className="visitor-story"><h1>{content.title}</h1><p className="visitor-narration">{content.narrationText}</p><div className="visitor-listen">{visitorAudioUrl ? <audio controls preload="metadata" src={visitorAudioUrl} aria-label="Audio thuyết minh" onPlay={() => { setPlaying(true); rememberListening(content.title); void api.recordEvent({ eventId: crypto.randomUUID(), eventType: 'AUDIO_START', poiId, languageCode: language }); }} onPause={() => setPlaying(false)} /> : <p className="empty-state">Nội dung này chưa có audio.</p>}</div><p className="visitor-hint">Bạn có thể đổi ngôn ngữ ở phía trên để nghe bản dịch tương ứng.</p></article> : null}</main>);
+  return visitorShell(<main className="visitor-main"><a className="visitor-back" href="/">← Tất cả địa điểm</a><div className="visitor-location"><span className="visitor-marker">⌖</span><span>Điểm tham quan #{poiId}</span></div>{loading ? <div className="visitor-loading">Đang tải thuyết minh…</div> : error ? <div className="visitor-error"><h1>Chưa có nội dung cho điểm này.</h1><p>{error}</p><a href="/">Chọn một địa điểm khác</a></div> : content ? <article className="visitor-story"><h1>{content.title}</h1><p className="visitor-narration">{content.narrationText}</p><div className="visitor-listen">{visitorAudioUrl ? <audio controls preload="metadata" src={visitorAudioUrl} aria-label="Audio thuyết minh" onPlay={() => { setPlaying(true); rememberListening(content.title); void api.recordEvent({ eventId: safeRandomUUID(), eventType: 'AUDIO_START', poiId, languageCode: language }); }} onPause={() => setPlaying(false)} /> : <p className="empty-state">Nội dung này chưa có audio.</p>}</div><p className="visitor-hint">Bạn có thể đổi ngôn ngữ ở phía trên để nghe bản dịch tương ứng.</p></article> : null}</main>);
 }
 
-function CatalogPanel({ section, token, onToast }: { section: string; token: string; onToast: (message: string) => void }) {
+function CatalogPanel({ section, token, onToast, onPoisChange }: { section: string; token: string; onToast: (message: string) => void; onPoisChange?: (pois: ApiPoi[]) => void }) {
   const [languages, setLanguages] = useState<ApiLanguage[]>([]);
   const [locations, setLocations] = useState<ApiLocation[]>([]);
   const [pois, setPois] = useState<ApiPoi[]>([]);
   const [voices, setVoices] = useState<ApiVoice[]>([]);
-  const [form, setForm] = useState({ code: 'vi', name: '', locationId: '', title: '', voice: '' });
+  const [entityKind, setEntityKind] = useState<'location' | 'poi'>('poi');
+  const [form, setForm] = useState({ code: 'vi', name: '', nameVi: '', nameEn: '', locationId: '', title: '', voice: '' });
   const [busy, setBusy] = useState(false);
   const [panelMessage, setPanelMessage] = useState('');
   const reload = async () => {
-    if (section === 'Ngôn ngữ & giọng đọc') { const [nextLanguages, nextVoices] = await Promise.all([api.languages(token), api.voices(token)]); setLanguages(nextLanguages); setVoices(nextVoices); }
-    if (section === 'Địa điểm & POI') { const [nextLocations, nextPois] = await Promise.all([api.locations(token), api.pois(token)]); setLocations(nextLocations); setPois(nextPois); }
+    if (section === 'Ngôn ngữ & giọng đọc') {
+      const [nextLanguages, nextVoices] = await Promise.all([api.languages(token), api.voices(token)]);
+      setLanguages(nextLanguages);
+      setVoices(nextVoices);
+    }
+    if (section === 'Địa điểm & POI') {
+      const [nextLocations, nextPois] = await Promise.all([api.locations(token), api.pois(token)]);
+      setLocations(nextLocations);
+      setPois(nextPois);
+      onPoisChange?.(nextPois);
+    }
   };
   const toggleCatalog = async (kind: 'location' | 'poi', id: number, isActive: boolean) => {
-    try { if (kind === 'location') await api.setLocationActive(token, id, !isActive); else await api.setPoiActive(token, id, !isActive); await reload(); onToast(isActive ? 'Đã tắt bản ghi.' : 'Đã bật bản ghi.'); }
-    catch (error) { onToast(error instanceof Error ? error.message : 'Không thể cập nhật trạng thái'); }
+    try {
+      if (kind === 'location') await api.setLocationActive(token, id, !isActive);
+      else await api.setPoiActive(token, id, !isActive);
+      await reload();
+      onToast(isActive ? 'Đã tắt bản ghi.' : 'Đã bật bản ghi.');
+    } catch (error) {
+      onToast(error instanceof Error ? error.message : 'Không thể cập nhật trạng thái');
+    }
   };
   const deleteLocation = async (id: number) => {
     if (!window.confirm('Bạn có chắc chắn muốn xóa địa điểm này?')) return;
@@ -162,23 +209,176 @@ function CatalogPanel({ section, token, onToast }: { section: string; token: str
       window.alert(msg);
     }
   };
+  const deletePoi = async (id: number) => {
+    if (!window.confirm('Bạn có chắc chắn muốn xóa điểm tham quan (POI) này?')) return;
+    try {
+      await api.deletePoi(token, id);
+      await reload();
+      setPanelMessage('Đã xóa POI thành công.');
+      onToast('Đã xóa POI.');
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : 'Không thể xóa POI';
+      setPanelMessage(msg);
+      onToast(msg);
+      window.alert(msg);
+    }
+  };
   useEffect(() => { void reload().catch((error: unknown) => onToast(error instanceof Error ? error.message : 'Không thể tải dữ liệu')); }, [section]);
   const submit = async (event: FormEvent) => {
-    event.preventDefault(); setBusy(true);
+    event.preventDefault();
+    setBusy(true);
     try {
       if (section === 'Ngôn ngữ & giọng đọc') {
         if (form.name) await api.createLanguage(token, form.code, form.name);
         if (form.voice) await api.createVoice(token, form.code, form.voice);
-      } else if (section === 'Địa điểm & POI' && form.name) {
-        const translations = [{ languageCode: 'en', name: form.name }];
-        if (form.locationId) await api.createPoi(token, Number(form.locationId), translations);
-        else await api.createLocation(token, translations);
+      } else if (section === 'Địa điểm & POI') {
+        if (entityKind === 'location') {
+          const viName = form.nameVi.trim();
+          const enName = form.nameEn.trim() || viName;
+          if (!enName) {
+            onToast('Vui lòng nhập tên địa điểm');
+            setBusy(false);
+            return;
+          }
+          const translations = [
+            { languageCode: 'en', name: enName },
+            ...(viName && viName !== enName ? [{ languageCode: 'vi', name: viName }] : [{ languageCode: 'vi', name: viName || enName }]),
+          ];
+          await api.createLocation(token, translations);
+        } else {
+          if (!form.locationId) {
+            onToast('Vui lòng chọn Địa điểm cha cho POI');
+            setBusy(false);
+            return;
+          }
+          const viName = form.nameVi.trim();
+          const enName = form.nameEn.trim() || viName;
+          if (!enName) {
+            onToast('Vui lòng nhập tên điểm tham quan (POI)');
+            setBusy(false);
+            return;
+          }
+          const translations = [
+            { languageCode: 'en', name: enName },
+            ...(viName && viName !== enName ? [{ languageCode: 'vi', name: viName }] : [{ languageCode: 'vi', name: viName || enName }]),
+          ];
+          await api.createPoi(token, Number(form.locationId), translations);
+        }
       }
-      await reload(); setForm({ ...form, name: '', voice: '' }); onToast('Đã lưu thay đổi.');
-    } catch (error) { onToast(error instanceof Error ? error.message : 'Không thể lưu'); } finally { setBusy(false); }
+      await reload();
+      setForm({ ...form, name: '', nameVi: '', nameEn: '', voice: '' });
+      onToast('Đã lưu thay đổi.');
+    } catch (error) {
+      onToast(error instanceof Error ? error.message : 'Không thể lưu');
+    } finally {
+      setBusy(false);
+    }
   };
   const isLanguage = section === 'Ngôn ngữ & giọng đọc';
-  return <section className="catalog-panel"><div className="catalog-heading"><div><h2>{isLanguage ? 'Ngôn ngữ và giọng đọc.' : 'Địa điểm và điểm tham quan.'}</h2></div><span className="catalog-count">{isLanguage ? `${languages.length} ngôn ngữ · ${voices.length} voice` : `${locations.length} địa điểm · ${pois.length} POI`}</span></div><form className="crud-form" onSubmit={submit}><label>{isLanguage ? 'Mã ngôn ngữ' : 'Tên tiếng Anh'}<input value={isLanguage ? form.code : form.name} onChange={(event) => setForm({ ...form, ...(isLanguage ? { code: event.target.value } : { name: event.target.value }) })} placeholder={isLanguage ? 'vi' : 'Imperial Citadel'} required /></label>{isLanguage ? <><label>Tên ngôn ngữ<input value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} placeholder="Tiếng Việt" /></label><label>ElevenLabs voice ID<input value={form.voice} onChange={(event) => setForm({ ...form, voice: event.target.value })} placeholder="21m00Tcm4TlvDq8ikWAM" /></label></> : <label>Thêm vào location hiện có (ID, tùy chọn)<input value={form.locationId} onChange={(event) => setForm({ ...form, locationId: event.target.value })} placeholder="Để trống để tạo location" inputMode="numeric" /></label>}<button className="primary-button" disabled={busy}>{busy ? 'Đang lưu…' : 'Tạo bản ghi'}</button></form>{panelMessage && <p className="toast" role="status" style={{ margin: '14px 0' }}>{panelMessage}</p>}<div className="crud-table">{isLanguage ? <>{languages.map((item) => <div className="crud-row" key={item.code}><strong>{item.code.toUpperCase()}</strong><span>{item.name}</span><select value={item.defaultVoiceId ?? ''} onChange={(event) => { if (event.target.value) void api.setDefaultVoice(token, item.code, Number(event.target.value)).then(reload).then(() => onToast('Đã cập nhật voice mặc định.')).catch((error: unknown) => onToast(error instanceof Error ? error.message : 'Không thể cập nhật voice mặc định')); }}><option value="">Chọn voice mặc định</option>{voices.filter((voice) => voice.languageCode === item.code && voice.isAvailable).map((voice) => <option key={voice.id} value={voice.id}>{voice.providerVoiceKey}</option>)}</select><StatusBadge status={item.isActive ? 'Đã xuất bản' : 'Cần rà soát'} /></div>)}{voices.map((voice) => <div className="crud-row" key={voice.id}><strong>Voice #{voice.id}</strong><span>{voice.languageCode} · {voice.providerVoiceKey}</span><span>{voice.isAvailable ? 'Sẵn sàng' : 'Tắt'}</span></div>)}</> : <>{locations.map((item) => <div className="crud-row" key={`location-${item.id}`}><strong>Location #{item.id}</strong><span>{item.translations.map((translation) => translation.name).join(' · ')}</span><span>{pois.filter((poi) => poi.locationId === item.id).length} POI</span><button className="quiet-button" onClick={() => toggleCatalog('location', item.id, item.isActive)}>{item.isActive ? 'Tắt' : 'Bật'}</button><button className="quiet-button" onClick={() => deleteLocation(item.id)}>Xóa</button></div>)}{pois.map((item) => <div className="crud-row" key={`poi-${item.id}`}><strong>POI #{item.id}</strong><span>{item.translations.map((translation) => translation.name).join(' · ')}</span><span>Location #{item.locationId}</span><button className="quiet-button" onClick={() => toggleCatalog('poi', item.id, item.isActive)}>{item.isActive ? 'Tắt' : 'Bật'}</button></div>)}</>}</div></section>;
+  return (
+    <section className="catalog-panel">
+      <div className="catalog-heading">
+        <div><h2>{isLanguage ? 'Ngôn ngữ và giọng đọc.' : 'Địa điểm và điểm tham quan.'}</h2></div>
+        <span className="catalog-count">{isLanguage ? `${languages.length} ngôn ngữ · ${voices.length} voice` : `${locations.length} địa điểm · ${pois.length} POI`}</span>
+      </div>
+
+      {!isLanguage && (
+        <div className="segmented" style={{ width: 'fit-content', marginBottom: '18px' }} role="tablist" aria-label="Chọn loại bản ghi cần tạo">
+          <button type="button" className={entityKind === 'location' ? 'is-selected' : ''} onClick={() => setEntityKind('location')}>
+            Tạo Địa điểm (Location)
+          </button>
+          <button type="button" className={entityKind === 'poi' ? 'is-selected' : ''} onClick={() => setEntityKind('poi')}>
+            Tạo Điểm tham quan (POI)
+          </button>
+        </div>
+      )}
+
+      <form className="crud-form" onSubmit={submit}>
+        {isLanguage ? (
+          <>
+            <label>Mã ngôn ngữ<input value={form.code} onChange={(event) => setForm({ ...form, code: event.target.value })} placeholder="vi" required /></label>
+            <label>Tên ngôn ngữ<input value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} placeholder="Tiếng Việt" /></label>
+            <label>ElevenLabs voice ID<input value={form.voice} onChange={(event) => setForm({ ...form, voice: event.target.value })} placeholder="21m00Tcm4TlvDq8ikWAM" /></label>
+          </>
+        ) : entityKind === 'location' ? (
+          <>
+            <label>Tên địa điểm (tiếng Việt)<input value={form.nameVi} onChange={(event) => setForm({ ...form, nameVi: event.target.value })} placeholder="Ví dụ: Hoàng Thành Thăng Long" required /></label>
+            <label>Tên tiếng Anh (English)<input value={form.nameEn} onChange={(event) => setForm({ ...form, nameEn: event.target.value })} placeholder="Ví dụ: Imperial Citadel of Thang Long" /></label>
+          </>
+        ) : (
+          <>
+            <label>Thuộc địa điểm (Location cha)<select value={form.locationId} onChange={(event) => setForm({ ...form, locationId: event.target.value })} required><option value="">-- Chọn Địa điểm cha --</option>{locations.map((loc) => { const vi = loc.translations.find((t) => t.languageCode === 'vi')?.name; const en = loc.translations.find((t) => t.languageCode === 'en')?.name; return <option key={loc.id} value={loc.id}>{vi || en || `Location #${loc.id}`} (#{loc.id})</option>; })}</select></label>
+            <label>Tên điểm tham quan (tiếng Việt)<input value={form.nameVi} onChange={(event) => setForm({ ...form, nameVi: event.target.value })} placeholder="Ví dụ: Kỳ Đài" required /></label>
+            <label>Tên tiếng Anh (English)<input value={form.nameEn} onChange={(event) => setForm({ ...form, nameEn: event.target.value })} placeholder="Ví dụ: Flag Tower" /></label>
+          </>
+        )}
+        <button className="primary-button" disabled={busy || (!isLanguage && entityKind === 'poi' && locations.length === 0)}>
+          {busy ? 'Đang lưu…' : isLanguage ? 'Tạo bản ghi' : entityKind === 'location' ? 'Tạo địa điểm' : 'Tạo POI'}
+        </button>
+      </form>
+
+      {panelMessage && <p className="toast" role="status" style={{ margin: '14px 0' }}>{panelMessage}</p>}
+
+      <div className="crud-table">
+        {isLanguage ? (
+          <>
+            {languages.map((item) => (
+              <div className="crud-row" key={item.code}>
+                <strong>{item.code.toUpperCase()}</strong>
+                <span>{item.name}</span>
+                <select value={item.defaultVoiceId ?? ''} onChange={(event) => { if (event.target.value) void api.setDefaultVoice(token, item.code, Number(event.target.value)).then(reload).then(() => onToast('Đã cập nhật voice mặc định.')).catch((error: unknown) => onToast(error instanceof Error ? error.message : 'Không thể cập nhật voice mặc định')); }}>
+                  <option value="">Chọn voice mặc định</option>
+                  {voices.filter((voice) => voice.languageCode === item.code && voice.isAvailable).map((voice) => <option key={voice.id} value={voice.id}>{voice.providerVoiceKey}</option>)}
+                </select>
+                <span className={`status status--${item.isActive ? 'published' : 'draft'}`}>{item.isActive ? 'Hoạt động' : 'Tạm tắt'}</span>
+              </div>
+            ))}
+            {voices.map((voice) => (
+              <div className="crud-row" key={voice.id}>
+                <strong>Voice #{voice.id}</strong>
+                <span>{voice.languageCode} · {voice.providerVoiceKey}</span>
+                <span>{voice.isAvailable ? 'Sẵn sàng' : 'Tắt'}</span>
+              </div>
+            ))}
+          </>
+        ) : (
+          <>
+            <div style={{ padding: '8px 4px 4px', gridColumn: '1 / -1', fontWeight: 600, color: 'var(--ink)' }}>
+              1. Danh sách Địa điểm (Locations)
+            </div>
+            {locations.length === 0 ? <p className="empty-state">Chưa có địa điểm nào.</p> : locations.map((item) => (
+              <div className="crud-row" key={`location-${item.id}`}>
+                <strong>Location #{item.id}</strong>
+                <span>{item.translations.map((translation) => translation.name).join(' · ')}</span>
+                <span>{pois.filter((poi) => poi.locationId === item.id).length} POI trực thuộc</span>
+                <span className={`status status--${item.isActive ? 'published' : 'draft'}`}>{item.isActive ? 'Hoạt động' : 'Tạm tắt'}</span>
+                <button className="quiet-button" onClick={() => toggleCatalog('location', item.id, item.isActive)}>{item.isActive ? 'Tắt' : 'Bật'}</button>
+                <button className="quiet-button" onClick={() => deleteLocation(item.id)}>Xóa</button>
+              </div>
+            ))}
+
+            <div style={{ padding: '16px 4px 4px', gridColumn: '1 / -1', fontWeight: 600, color: 'var(--ink)' }}>
+              2. Danh sách Điểm tham quan (POIs)
+            </div>
+            {pois.length === 0 ? <p className="empty-state">Chưa có POI nào.</p> : pois.map((item) => {
+              const parentLoc = locations.find((l) => l.id === item.locationId);
+              const parentName = parentLoc?.translations.find((t) => t.languageCode === 'vi')?.name || parentLoc?.translations[0]?.name || `Location #${item.locationId}`;
+              return (
+                <div className="crud-row" key={`poi-${item.id}`}>
+                  <strong>POI #{item.id}</strong>
+                  <span>{item.translations.map((translation) => translation.name).join(' · ')}</span>
+                  <span>Thuộc: <strong>{parentName}</strong></span>
+                  <span className={`status status--${item.isActive ? 'published' : 'draft'}`}>{item.isActive ? 'Hoạt động' : 'Tạm tắt'}</span>
+                  <button className="quiet-button" onClick={() => toggleCatalog('poi', item.id, item.isActive)}>{item.isActive ? 'Tắt' : 'Bật'}</button>
+                  <button className="quiet-button" onClick={() => deletePoi(item.id)}>Xóa</button>
+                </div>
+              );
+            })}
+          </>
+        )}
+      </div>
+    </section>
+  );
 }
 
 function QrPanel({ token, pois, onToast }: { token: string; pois: ApiPoi[]; onToast: (message: string) => void }) {
@@ -238,7 +438,7 @@ function QrPanel({ token, pois, onToast }: { token: string; pois: ApiPoi[]; onTo
     link.download = `qr-poi-${code.poiId}.png`;
     link.click();
   };
-  return <section className="catalog-panel"><div className="catalog-heading"><div><h2>QR code cho từng điểm tham quan.</h2><p className="form-note">Ảnh QR được tạo từ đường dẫn visitor và có thể tải xuống để in.</p></div><span className="catalog-count">{codes.length} QR code</span></div><form className="crud-form qr-form" onSubmit={save}><label>POI<select value={poiId} onChange={(event) => setPoiId(event.target.value)} required disabled={busy}><option value="">Chọn POI</option>{pois.map((poi) => <option key={poi.id} value={poi.id}>POI #{poi.id}</option>)}</select></label><p className="form-note">Đường dẫn visitor sẽ được hệ thống tự tạo theo POI và ngôn ngữ mặc định.</p>{pois.length === 0 && <p className="empty-state">Chưa có POI khả dụng. Hãy tạo POI ở mục “Địa điểm & POI” trước.</p>}<button type="submit" className="primary-button" disabled={busy || pois.length === 0}>{busy ? 'Đang lưu…' : 'Tạo hoặc cập nhật QR'}</button>{message && <p className="toast" role="status">{message}</p>}</form>{codes.length > 0 && <button className="quiet-button qr-refresh-all" type="button" disabled={busy} onClick={() => void refreshAll()}>{busy ? 'Đang cập nhật…' : 'Cập nhật link cho tất cả QR'}</button>}<div className="qr-card-grid">{codes.map((code) => { const poi = pois.find((item) => item.id === code.poiId); const name = poi?.translations.find((item) => item.languageCode === 'en')?.name ?? `POI #${code.poiId}`; return <article className="qr-card" key={code.id}><div className="qr-card-image"><QRCodeCanvas id={`qr-canvas-${code.id}`} value={code.targetUrl} size={224} level="H" marginSize={2} title={`QR code for ${name}`} /></div><div className="qr-card-content"><div><span className="qr-card-kicker">QR #{code.id}</span><h3>{name}</h3></div><a className="qr-card-url" href={code.targetUrl} target="_blank" rel="noreferrer">{code.targetUrl}</a><div className="qr-card-actions"><a className="quiet-button" href={code.targetUrl} target="_blank" rel="noreferrer">Mở visitor ↗</a><button className="primary-button" type="button" onClick={() => download(code)}>Tải PNG</button></div></div></article>; })}{codes.length === 0 && <p className="empty-state">Chưa có QR code. Chọn POI để tạo đường dẫn tự động.</p>}</div></section>;
+  return <section className="catalog-panel"><div className="catalog-heading"><div><h2>QR code cho từng điểm tham quan.</h2><p className="form-note">Ảnh QR được tạo từ đường dẫn visitor và có thể tải xuống để in.</p></div><span className="catalog-count">{codes.length} QR code</span></div><form className="crud-form qr-form" onSubmit={save}><label>POI<select value={poiId} onChange={(event) => setPoiId(event.target.value)} required disabled={busy}><option value="">Chọn POI</option>{pois.map((poi) => { const name = poi.translations.find((item) => item.languageCode === 'vi')?.name ?? poi.translations.find((item) => item.languageCode === 'en')?.name ?? `POI #${poi.id}`; return <option key={poi.id} value={poi.id}>POI #{poi.id} · {name}</option>; })}</select></label><p className="form-note">Đường dẫn visitor sẽ được hệ thống tự tạo theo POI và ngôn ngữ mặc định.</p>{pois.length === 0 && <p className="empty-state">Chưa có POI khả dụng. Hãy tạo POI ở mục “Địa điểm & POI” trước.</p>}<button type="submit" className="primary-button" disabled={busy || pois.length === 0}>{busy ? 'Đang lưu…' : 'Tạo hoặc cập nhật QR'}</button>{message && <p className="toast" role="status">{message}</p>}</form>{codes.length > 0 && <button className="quiet-button qr-refresh-all" type="button" disabled={busy} onClick={() => void refreshAll()}>{busy ? 'Đang cập nhật…' : 'Cập nhật link cho tất cả QR'}</button>}<div className="qr-card-grid">{codes.map((code) => { const poi = pois.find((item) => item.id === code.poiId); const name = poi?.translations.find((item) => item.languageCode === 'vi')?.name ?? poi?.translations.find((item) => item.languageCode === 'en')?.name ?? `POI #${code.poiId}`; return <article className="qr-card" key={code.id}><div className="qr-card-image"><QRCodeCanvas id={`qr-canvas-${code.id}`} value={code.targetUrl} size={224} level="H" marginSize={2} title={`QR code for ${name}`} /></div><div className="qr-card-content"><div><span className="qr-card-kicker">QR #{code.id}</span><h3>{name}</h3></div><a className="qr-card-url" href={code.targetUrl} target="_blank" rel="noreferrer">{code.targetUrl}</a><div className="qr-card-actions"><a className="quiet-button" href={code.targetUrl} target="_blank" rel="noreferrer">Mở visitor ↗</a><button className="primary-button" type="button" onClick={() => download(code)}>Tải PNG</button></div></div></article>; })}{codes.length === 0 && <p className="empty-state">Chưa có QR code. Chọn POI để tạo đường dẫn tự động.</p>}</div></section>;
 }
 
 function UserPanel({ token, onToast }: { token: string; onToast: (message: string) => void }) {
@@ -396,10 +596,36 @@ function App() {
   const saveContent = async () => {
     if (!selected.versionId) return;
     try {
-      await api.updateContent(token, selected.versionId, editTitle, editBody);
-      setItems((current) => current.map((item) => item.id === selected.id ? { ...item, title: editTitle, body: editBody, updated: 'Vừa chỉnh sửa', hasAudio: false } : item));
-      setToast('Đã lưu nội dung. Audio cũ cần tạo lại.');
+      const updated = await api.updateContent(token, selected.versionId, editTitle, editBody);
+      const isTextSame = selected.body === editBody;
+      const keepAudio = isTextSame && Boolean(selected.hasAudio);
+      setItems((current) => current.map((item) => item.id === selected.id ? {
+        ...item,
+        title: updated.title,
+        body: updated.narrationText,
+        updated: 'Vừa chỉnh sửa',
+        hasAudio: keepAudio,
+        audioUrl: keepAudio ? item.audioUrl : undefined,
+      } : item));
+      setToast(isTextSame ? 'Đã lưu tiêu đề mới (audio được giữ nguyên).' : 'Đã lưu nội dung. Audio cũ đã hết hạn, cần tạo lại.');
     } catch (error) { setToast(error instanceof Error ? error.message : 'Không thể lưu nội dung'); }
+  };
+
+  const deleteCurrentContent = async () => {
+    if (!selected?.versionId) return;
+    const actionName = selected.status === 'Đã gỡ xuất bản' ? 'bài viết đã gỡ xuất bản' : 'bản nháp';
+    if (!window.confirm(`Bạn có chắc chắn muốn xóa ${actionName} "${selected.title}" (Phiên bản #${selected.versionId})?`)) return;
+    try {
+      await api.deleteContent(token, selected.versionId);
+      const remaining = items.filter((item) => item.versionId !== selected.versionId);
+      setItems(remaining);
+      if (remaining.length > 0) {
+        setSelectedId(remaining[0].id);
+      }
+      setToast('Đã xóa thành công.');
+    } catch (error) {
+      setToast(error instanceof Error ? error.message : 'Không thể xóa');
+    }
   };
 
   const translateSelected = async () => {
@@ -467,17 +693,17 @@ function App() {
       <main className="main">
         <header className="topbar">
           <div><span className="breadcrumb">Studio / {activeNav}</span><h1>{activeNav}</h1></div>
-          <div className="top-actions"><button className="quiet-button" aria-label="Thông báo" onClick={() => setToast('Không có thông báo mới.')}>Thông báo</button><button className="lang-button">VI <span>⌄</span></button><button className="primary-button" onClick={() => setShowCreate(true)}>+ Tạo nội dung</button></div>
+          <div className="top-actions"><button className="quiet-button" aria-label="Thông báo" onClick={() => setToast(pendingCount > 0 ? `Có ${pendingCount} bài đang chờ duyệt.` : 'Không có thông báo mới.')}>Thông báo {pendingCount > 0 ? `(${pendingCount})` : ''}</button><button className="lang-button" title="Giao diện Content Studio (Tiếng Việt)">VI</button><button className="primary-button" onClick={() => setShowCreate(true)}>+ Tạo nội dung</button></div>
         </header>
 
         <section className="workspace">
           <div className="workspace-heading"><div><h2>Những câu chuyện đang chờ bạn hoàn thiện.</h2></div><button className="quiet-button" onClick={() => { setSearch(''); setStatusFilter('ALL'); setToast('Đã xóa bộ lọc.'); }}>Lọc & sắp xếp <span>⌄</span></button></div>
           {toast && <p className="toast" role="status" style={{ margin: '0 0 16px' }}>{toast}</p>}
-          {activeNav === 'Tổng quan' ? <OverviewPanel items={items} pois={pois} voices={voices} token={token} /> : activeNav === 'QR code' ? <QrPanel token={token} pois={pois} onToast={setToast} /> : activeNav === 'Người dùng' ? <UserPanel token={token} onToast={setToast} /> : activeNav !== 'Nội dung' ? <CatalogPanel section={activeNav} token={token} onToast={setToast} /> : <div className="content-grid">
+          {activeNav === 'Tổng quan' ? <OverviewPanel items={items} pois={pois} voices={voices} token={token} /> : activeNav === 'QR code' ? <QrPanel token={token} pois={pois} onToast={setToast} /> : activeNav === 'Người dùng' ? <UserPanel token={token} onToast={setToast} /> : activeNav !== 'Nội dung' ? <CatalogPanel section={activeNav} token={token} onToast={setToast} onPoisChange={setPois} /> : <div className="content-grid">
             <section className="content-list" aria-label="Danh sách nội dung">
               <div className="list-toolbar"><div className="segmented" role="tablist" aria-label="Lọc trạng thái"><button className={statusFilter === 'ALL' ? 'is-selected' : ''} onClick={() => setStatusFilter('ALL')} role="tab" aria-selected={statusFilter === 'ALL'}>Tất cả <span>{items.length.toString().padStart(2, '0')}</span></button><button className={statusFilter === 'PENDING_REVIEW' ? 'is-selected' : ''} onClick={() => setStatusFilter('PENDING_REVIEW')} role="tab" aria-selected={statusFilter === 'PENDING_REVIEW'}>Chờ duyệt <span>{pendingCount.toString().padStart(2, '0')}</span></button><button className={statusFilter === 'PUBLISHED' ? 'is-selected' : ''} onClick={() => setStatusFilter('PUBLISHED')} role="tab" aria-selected={statusFilter === 'PUBLISHED'}>Đã xuất bản <span>{items.filter((item) => item.status === 'Đã xuất bản').length.toString().padStart(2, '0')}</span></button></div><label className="search-control"><Icon>⌕</Icon><input aria-label="Tìm kiếm nội dung" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Tìm kiếm" /></label></div>
               <div className="list-items">{visibleItems.map((item) => <button className={`content-row ${selected.id === item.id ? 'is-selected' : ''}`} key={item.id} onClick={() => { setSelectedId(item.id); setShowVisitor(false); setToast(''); }}><span className="row-index">0{item.id}</span><span className="row-main"><strong>{item.title}</strong><small>{item.place}</small></span><span className="row-meta"><span className="language-chip">{item.language}</span><StatusBadge status={item.status} /></span><span className="row-time">{item.updated}</span></button>)}</div>
-              <button className="load-more" onClick={() => setToast('Đang hiển thị toàn bộ nội dung đã tải từ API.')}>Đã tải {visibleItems.length} nội dung <span>✓</span></button>
+              <button className="load-more" title="Bấm để tải lại danh sách" onClick={() => { if (token) { setLoading(true); api.content(token).then((content) => { setItems(content.map(mapContent)); setToast('Đã làm mới danh sách nội dung.'); }).catch(() => setToast('Không thể làm mới danh sách.')).finally(() => setLoading(false)); } }}>Đang hiển thị {visibleItems.length} nội dung · Bấm để tải lại ⟳</button>
             </section>
 
             <section className="detail-panel" aria-label="Chi tiết nội dung">
@@ -486,9 +712,31 @@ function App() {
               <div className="audio-console">
                 <div className="audio-console-head"><span><span className="audio-live" /> Audio preview</span><span className="audio-time">{selected.duration}</span></div>
                 <div className="waveform" aria-label="Bản xem trước audio">{[24, 42, 18, 54, 35, 68, 32, 48, 74, 44, 26, 58, 38, 65, 30, 50, 25, 45, 70, 38, 24, 52, 33, 60, 42, 28, 54, 38, 68, 45].map((height, index) => <span key={index} style={{ height: `${height}%` }} className={index < (isPlaying ? 19 : 0) ? 'is-played' : ''} />)}</div>
-                <div className="audio-controls"><button className="play-button" aria-label={isPlaying ? 'Tạm dừng' : 'Phát audio'} onClick={() => setIsPlaying((playing) => !playing)}>{isPlaying ? 'Tạm dừng' : 'Phát'}</button>{selected.audioUrl ? <audio controls preload="metadata" src={selected.audioUrl} aria-label="Audio thuyết minh" /> : <span className="audio-progress">Chưa có file audio thật</span>}<button className="volume-button" aria-label="Âm lượng" onClick={() => setToast('Điều chỉnh âm lượng bằng trình phát audio.')}>⌁</button></div>
+                <div className="audio-controls"><button className="play-button" aria-label={isPlaying ? 'Tạm dừng' : 'Phát audio'} onClick={() => { const el = document.getElementById('studio-audio-player') as HTMLAudioElement | null; if (!el || !selected.audioUrl) { setToast('Chưa có file audio để phát. Hãy tạo audio ElevenLabs hoặc upload MP3.'); return; } if (el.paused) { void el.play(); } else { el.pause(); } }}>{isPlaying ? 'Tạm dừng' : 'Phát'}</button>{selected.audioUrl ? <audio id="studio-audio-player" controls preload="metadata" src={selected.audioUrl} aria-label="Audio thuyết minh" onPlay={() => setIsPlaying(true)} onPause={() => setIsPlaying(false)} onEnded={() => setIsPlaying(false)} /> : <span className="audio-progress">Chưa có file audio thật</span>}<button className="volume-button" aria-label="Bật/Tắt tiếng" title="Bật/Tắt tiếng" onClick={() => { const el = document.getElementById('studio-audio-player') as HTMLAudioElement | null; if (el) { el.muted = !el.muted; setToast(el.muted ? 'Đã tắt tiếng audio.' : 'Đã bật lại tiếng audio.'); } else { setToast('Chưa có audio để điều chỉnh.'); } }}>⌁</button></div>
               </div>
-              <div className="detail-actions"><button className="quiet-button" onClick={() => setShowVisitor(true)}>Xem như visitor <span>↗</span></button><button className="quiet-button" onClick={openHistory}>Lịch sử workflow</button><button className="quiet-button" onClick={translateSelected}>Dịch bằng provider</button>{selected.status !== 'Đã xuất bản' && <><button className="quiet-button" onClick={saveContent}>Lưu nội dung</button><label className="upload-button">Upload audio<input type="file" accept="audio/mp3,audio/mpeg,.mp3" onChange={uploadAudio} /></label><button className="quiet-button" onClick={generateAudio}>{selected.hasAudio ? 'Tạo lại audio ElevenLabs' : 'Tạo audio ElevenLabs'}</button></>}{selected.status === 'Đang soạn' && <button className="primary-button" onClick={() => transitionSelected('submit')}>Gửi duyệt</button>}{selected.status === 'Chờ duyệt' && <><button className="quiet-button" onClick={() => transitionSelected('approve')}>Duyệt</button><button className="quiet-button" onClick={() => transitionSelected('reject')}>Từ chối</button></>}{selected.status === 'Đã duyệt' && <button className="primary-button" onClick={publishSelected}>Xuất bản phiên bản</button>}{selected.status === 'Đã xuất bản' && <button className="quiet-button" onClick={() => transitionSelected('unpublish')}>Gỡ xuất bản</button>}{selected.status === 'Đã gỡ xuất bản' && <button className="primary-button" onClick={() => transitionSelected('republish')}>Xuất bản lại</button>}{selected.status === 'Cần rà soát' && <button className="primary-button" onClick={() => transitionSelected('submit')}>Gửi duyệt lại</button>}</div>
+              <div className="detail-actions">
+                <button className="quiet-button" onClick={() => setShowVisitor(true)}>Xem như visitor <span>↗</span></button>
+                <button className="quiet-button" onClick={openHistory}>Lịch sử workflow</button>
+                <button className="quiet-button" onClick={translateSelected}>Dịch bằng provider</button>
+                {selected.status !== 'Đã xuất bản' && (
+                  <>
+                    <button className="quiet-button" onClick={saveContent}>Lưu nội dung</button>
+                    <label className="upload-button">Upload audio<input type="file" accept="audio/mp3,audio/mpeg,.mp3" onChange={uploadAudio} /></label>
+                    <button className="quiet-button" onClick={generateAudio}>{selected.hasAudio ? 'Tạo lại audio ElevenLabs' : 'Tạo audio ElevenLabs'}</button>
+                  </>
+                )}
+                {selected.status !== 'Đã xuất bản' && selected.status !== 'Chờ duyệt' && (
+                  <button type="button" className="quiet-button" style={{ color: 'var(--coral)', borderColor: 'var(--coral)' }} onClick={deleteCurrentContent}>
+                    {selected.status === 'Đã gỡ xuất bản' ? 'Xóa bài viết' : 'Xóa bản nháp'}
+                  </button>
+                )}
+                {selected.status === 'Đang soạn' && <button className="primary-button" onClick={() => transitionSelected('submit')}>Gửi duyệt</button>}
+                {selected.status === 'Chờ duyệt' && <><button className="quiet-button" onClick={() => transitionSelected('approve')}>Duyệt</button><button className="quiet-button" onClick={() => transitionSelected('reject')}>Từ chối</button></>}
+                {selected.status === 'Đã duyệt' && <button className="primary-button" onClick={publishSelected}>Xuất bản phiên bản</button>}
+                {selected.status === 'Đã xuất bản' && <button className="quiet-button" onClick={() => transitionSelected('unpublish')}>Gỡ xuất bản</button>}
+                {selected.status === 'Đã gỡ xuất bản' && <button className="primary-button" onClick={() => transitionSelected('republish')}>Xuất bản lại</button>}
+                {selected.status === 'Cần rà soát' && <button className="primary-button" onClick={() => transitionSelected('submit')}>Gửi duyệt lại</button>}
+              </div>
               {toast && <p className="toast" role="status">{toast}</p>}
             </section>
           </div>}
@@ -499,7 +747,7 @@ function App() {
 
       {showVisitor && <div className="visitor-overlay" role="dialog" aria-modal="true" aria-labelledby="visitor-title"><div className="visitor-card"><button className="close-button" aria-label="Đóng preview" onClick={() => setShowVisitor(false)}>×</button><span className="visitor-label">Visitor preview · {selected.language}</span><h2 id="visitor-title">{selected.title}</h2><p>{selected.body}</p><div className="visitor-player">{selected.audioUrl ? <audio controls preload="metadata" src={selected.audioUrl} aria-label="Audio thuyết minh" /> : <p className="empty-state">Chưa có audio thực. Hãy upload file hoặc tạo bằng ElevenLabs.</p>}</div></div></div>}
       {showHistory && <div className="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="history-title"><div className="modal-card history-card"><button type="button" className="close-button" aria-label="Đóng lịch sử" onClick={() => setShowHistory(false)}>×</button><h2 id="history-title">Lịch sử workflow.</h2><div className="history-list">{history.length ? history.map((event) => <div className="history-row" key={`${event.eventType}-${event.actedAt}`}><strong>{event.eventType}</strong><span>{new Date(event.actedAt).toLocaleString('vi-VN')}</span><small>{event.reason ?? `Actor #${event.actorUserId}`}</small></div>) : <p className="empty-state">Chưa có lịch sử.</p>}</div></div></div>}
-      {showCreate && <div className="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="create-title"><form className="modal-card" onSubmit={createContent}><button type="button" className="close-button" aria-label="Đóng form tạo nội dung" onClick={() => setShowCreate(false)}>×</button><h2 id="create-title">Tạo nội dung mới.</h2><label>Điểm tham quan<select value={newContent.poiId} onChange={(event) => setNewContent({ ...newContent, poiId: event.target.value })} required><option value="">Chọn POI</option>{pois.map((poi) => <option key={poi.id} value={poi.id}>POI #{poi.id} · {poi.translations.find((item) => item.languageCode === 'en')?.name ?? 'Unnamed'}</option>)}</select></label><label>Ngôn ngữ<select value={newContent.languageCode} onChange={(event) => setNewContent({ ...newContent, languageCode: event.target.value })}><option value="vi">Tiếng Việt</option><option value="en">English</option></select></label><label>Tiêu đề<input value={newContent.title} onChange={(event) => setNewContent({ ...newContent, title: event.target.value })} placeholder="Cổng thành phía Đông" required /></label><label>Nội dung thuyết minh<textarea value={newContent.narrationText} onChange={(event) => setNewContent({ ...newContent, narrationText: event.target.value })} rows={5} placeholder="Nhập lời thuyết minh..." required /></label><div className="modal-actions"><button type="button" className="quiet-button" onClick={() => setShowCreate(false)}>Hủy</button><button type="submit" className="primary-button">Tạo bản nháp</button></div></form></div>}
+      {showCreate && <div className="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="create-title"><form className="modal-card" onSubmit={createContent}><button type="button" className="close-button" aria-label="Đóng form tạo nội dung" onClick={() => setShowCreate(false)}>×</button><h2 id="create-title">Tạo nội dung mới.</h2><label>Điểm tham quan<select value={newContent.poiId} onChange={(event) => setNewContent({ ...newContent, poiId: event.target.value })} required><option value="">Chọn POI</option>{pois.map((poi) => { const name = poi.translations.find((item) => item.languageCode === 'vi')?.name ?? poi.translations.find((item) => item.languageCode === 'en')?.name ?? 'Unnamed'; return <option key={poi.id} value={poi.id}>POI #{poi.id} · {name}</option>; })}</select></label><label>Ngôn ngữ<select value={newContent.languageCode} onChange={(event) => setNewContent({ ...newContent, languageCode: event.target.value })}><option value="vi">Tiếng Việt</option><option value="en">English</option></select></label><label>Tiêu đề<input value={newContent.title} onChange={(event) => setNewContent({ ...newContent, title: event.target.value })} placeholder="Cổng thành phía Đông" required /></label><label>Nội dung thuyết minh<textarea value={newContent.narrationText} onChange={(event) => setNewContent({ ...newContent, narrationText: event.target.value })} rows={5} placeholder="Nhập lời thuyết minh..." required /></label><div className="modal-actions"><button type="button" className="quiet-button" onClick={() => setShowCreate(false)}>Hủy</button><button type="submit" className="primary-button">Tạo bản nháp</button></div></form></div>}
     </div>
   );
 }
