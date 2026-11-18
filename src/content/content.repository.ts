@@ -230,6 +230,27 @@ export class ContentRepository {
       return this.find(versionId);
     }
 
+  async confirmReviewed(versionId: number, actorUserId: number): Promise<ContentVersion | undefined> {
+    const client = await this.pool.connect();
+    try {
+      await client.query('BEGIN');
+      const result = await client.query<{ content_id: string }>(
+        `UPDATE narration_content nc SET needs_review = FALSE
+         FROM content_version v WHERE v.content_id = nc.content_id AND v.version_id = $1
+           AND v.status IN ('DRAFT', 'REJECTED') RETURNING nc.content_id`,
+        [versionId],
+      );
+      if (!result.rows[0]) throw new Error('Only draft or rejected content can be marked as reviewed');
+      await client.query(`INSERT INTO review_history (version_id, actor_user_id, event_type, reason)
+        VALUES ($1, $2, 'MARK_REVIEWED', NULL)`, [versionId, actorUserId]);
+      await client.query('COMMIT');
+      return this.find(versionId);
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally { client.release(); }
+  }
+
   async transition(versionId: number, action: 'submit' | 'withdraw' | 'approve' | 'reject' | 'publish' | 'unpublish' | 'republish', actorUserId: number, reason?: string): Promise<ContentVersion | undefined> {
     const client = await this.pool.connect();
     try {
@@ -245,6 +266,17 @@ export class ContentRepository {
       const from = current.rows[0].status;
       const target = this.targetStatus(from, action);
       if (!target) throw new Error(`Action '${action}' is not allowed from status '${from}'`);
+      if (action === 'submit') {
+        const readiness = await client.query<{ title: string; narration_text: string; needs_review: boolean; audio_ok: boolean }>(
+          `SELECT v.title, v.narration_text, nc.needs_review,
+             EXISTS (SELECT 1 FROM audio a WHERE a.version_id = v.version_id AND a.is_valid = TRUE AND a.is_outdated = FALSE) AS audio_ok
+           FROM content_version v JOIN narration_content nc ON nc.content_id = v.content_id WHERE v.version_id = $1`, [versionId]);
+        const row = readiness.rows[0];
+        if (!row.title.trim()) throw new Error('A title is required before submitting for review');
+        if (!row.narration_text.trim()) throw new Error('Narration text is required before submitting for review');
+        if (!row.audio_ok) throw new Error('A valid, current audio file is required before submitting for review');
+        if (row.needs_review) throw new Error('Confirm the translation review before submitting for review');
+      }
       if (target === 'PUBLISHED') {
         const check = await client.query<{ count: string }>(
           `SELECT COUNT(*)::text AS count FROM audio a

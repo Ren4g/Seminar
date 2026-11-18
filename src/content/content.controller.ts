@@ -40,6 +40,10 @@ export class ContentController {
   @Roles('ADMIN', 'CONTENT_MANAGER')
   update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateContentDto) { return this.service.update(id, dto); }
 
+  @Post(':id/confirm-reviewed')
+  @Roles('ADMIN', 'CONTENT_MANAGER')
+  confirmReviewed(@Param('id', ParseIntPipe) id: number, @Req() req: AuthenticatedRequest) { return this.service.confirmReviewed(id, req.user.userId); }
+
   @Post(':id/submit')
   @Roles('ADMIN', 'CONTENT_MANAGER')
   submit(@Param('id', ParseIntPipe) id: number, @Req() req: AuthenticatedRequest) { return this.service.transition(id, 'submit', req.user.userId); }

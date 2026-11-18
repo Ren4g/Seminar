@@ -9,6 +9,7 @@ export type ApiContent = {
   title: string;
   narrationText: string;
   status: string;
+  needsReview?: boolean;
   audio?: { filePath: string; fileFormat: string; isValid: boolean; isOutdated: boolean };
 };
 export type ApiVoice = { id: number; languageCode: string; providerVoiceKey: string; isAvailable: boolean };
@@ -50,6 +51,7 @@ export const api = {
     if (!response.ok) throw new ApiError(response.status, result?.message ?? 'Audio upload failed');
     return result as ApiContent;
   },
+  confirmReviewed: (token: string, versionId: number) => request<ApiContent>(`/content/${versionId}/confirm-reviewed`, { method: 'POST', body: JSON.stringify({}) }, token),
   transition: (token: string, versionId: number, action: 'submit' | 'withdraw' | 'approve' | 'publish' | 'unpublish' | 'republish', reason?: string) => request<ApiContent>(`/content/${versionId}/${action}`, { method: 'POST', body: JSON.stringify(reason ? { reason } : {}) }, token),
   reject: (token: string, versionId: number, reason: string) => request<ApiContent>(`/content/${versionId}/reject`, { method: 'POST', body: JSON.stringify({ reason }) }, token),
   visitorContent: (poiId: number, languageCode: string) => request<ApiContent>(`/visitor/pois/${poiId}/content?languageCode=${encodeURIComponent(languageCode)}`),
