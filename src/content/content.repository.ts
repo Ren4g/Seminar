@@ -118,7 +118,7 @@ export class ContentRepository {
         [sourceVersionId],
       );
       if (!source.rows[0]) throw new Error('Source content version was not found');
-      if (source.rows[0].language_code === targetLanguageCode) throw new Error('Target language must differ from source language');
+      if (source.rows[0].language_code === targetLanguageCode) throw new Error('Ngôn ngữ đích phải khác với ngôn ngữ nguồn');
       const client = await this.pool.connect();
       try {
         await client.query('BEGIN');
@@ -129,19 +129,49 @@ export class ContentRepository {
            RETURNING content_id`,
           [source.rows[0].poi_id, targetLanguageCode],
         );
-        const next = await client.query<{ next_number: number }>(
-          `SELECT COALESCE(MAX(version_number), 0) + 1 AS next_number
-           FROM content_version WHERE content_id = $1`,
+
+        // Kiểm tra xem đã có phiên bản đang soạn (DRAFT, REJECTED, PENDING_REVIEW) hay chưa theo quy tắc UC17 (6.1)
+        const existingDraft = await client.query<{ version_id: string; status: string }>(
+          `SELECT version_id, status FROM content_version
+           WHERE content_id = $1 AND status IN ('DRAFT', 'REJECTED', 'PENDING_REVIEW')
+           ORDER BY version_number DESC LIMIT 1`,
           [content.rows[0].content_id],
         );
-        const version = await client.query<{ version_id: string }>(
-          `INSERT INTO content_version (content_id, version_number, title, narration_text, status, translation_source_version_id)
-           VALUES ($1, $2, $3, $4, 'DRAFT', $5)
-           RETURNING version_id`,
-          [content.rows[0].content_id, next.rows[0].next_number, title, narrationText, sourceVersionId],
-        );
+
+        let targetVersionId: string;
+        if (existingDraft.rows[0]) {
+          if (existingDraft.rows[0].status === 'PENDING_REVIEW') {
+            throw new Error('Nội dung ở ngôn ngữ đích đang Chờ duyệt. Không thể tạo bản dịch mới.');
+          }
+          // Ghi đè vào bản nháp / bị từ chối đang soạn
+          targetVersionId = existingDraft.rows[0].version_id;
+          await client.query(
+            `UPDATE content_version
+             SET title = $1, narration_text = $2, status = 'DRAFT',
+                 translation_source_version_id = $3, created_at = now()
+             WHERE version_id = $4`,
+            [title, narrationText, sourceVersionId, targetVersionId],
+          );
+          // Xóa audio cũ nếu có vì văn bản dịch đã được cập nhật mới
+          await client.query(`DELETE FROM audio WHERE version_id = $1`, [targetVersionId]);
+        } else {
+          // Tạo phiên bản mới kế tiếp
+          const next = await client.query<{ next_number: number }>(
+            `SELECT COALESCE(MAX(version_number), 0) + 1 AS next_number
+             FROM content_version WHERE content_id = $1`,
+            [content.rows[0].content_id],
+          );
+          const version = await client.query<{ version_id: string }>(
+            `INSERT INTO content_version (content_id, version_number, title, narration_text, status, translation_source_version_id)
+             VALUES ($1, $2, $3, $4, 'DRAFT', $5)
+             RETURNING version_id`,
+            [content.rows[0].content_id, next.rows[0].next_number, title, narrationText, sourceVersionId],
+          );
+          targetVersionId = version.rows[0].version_id;
+        }
+
         await client.query('COMMIT');
-        return (await this.find(Number(version.rows[0].version_id))) as ContentVersion;
+        return (await this.find(Number(targetVersionId))) as ContentVersion;
       } catch (error) {
         await client.query('ROLLBACK');
         throw error;

@@ -1,4 +1,4 @@
-import { IsBoolean, IsInt, IsNotEmpty, IsOptional, IsString, Length, Min, ValidateNested } from 'class-validator';
+import { IsBoolean, IsInt, IsNotEmpty, IsNumber, IsOptional, IsString, Length, Min, ValidateNested } from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class TranslationDto {
@@ -43,9 +43,46 @@ export class UpdateLanguageDto {
 }
 
 export class CreateLocationDto {
+  @IsOptional()
+  @IsString()
+  @Length(1, 500)
+  address?: string;
+
+  @IsOptional()
+  @IsNumber()
+  latitude?: number;
+
+  @IsOptional()
+  @IsNumber()
+  longitude?: number;
+
   @ValidateNested({ each: true })
   @Type(() => TranslationDto)
   translations!: TranslationDto[];
+}
+
+export class UpdateLocationDto {
+  @IsOptional()
+  @IsString()
+  @Length(1, 500)
+  address?: string;
+
+  @IsOptional()
+  @IsNumber()
+  latitude?: number;
+
+  @IsOptional()
+  @IsNumber()
+  longitude?: number;
+
+  @IsOptional()
+  @IsBoolean()
+  isActive?: boolean;
+
+  @IsOptional()
+  @ValidateNested({ each: true })
+  @Type(() => TranslationDto)
+  translations?: TranslationDto[];
 }
 
 export class CreatePoiDto {

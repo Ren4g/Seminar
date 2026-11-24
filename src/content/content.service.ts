@@ -86,8 +86,17 @@ export class ContentService {
   }
   history(id: number) { return this.repository.history(id); }
   async translate(id: number, dto: TranslateContentDto) {
-    const apiKey = process.env.GOOGLE_TRANSLATE_API_KEY;
+    const targetCode = dto.targetLanguageCode?.trim().toLowerCase();
+    if (!targetCode) {
+      throw new BadRequestException('Vui lòng chọn ngôn ngữ đích để dịch.');
+    }
+
     const source = await this.find(id);
+    if (source.languageCode.toLowerCase() === targetCode) {
+      throw new BadRequestException('Ngôn ngữ đích phải khác với ngôn ngữ nguồn.');
+    }
+
+    const apiKey = process.env.GOOGLE_TRANSLATE_API_KEY;
     let translatedText = '';
     let translatedTitle = '';
 
@@ -97,7 +106,7 @@ export class ContentService {
         const response = await fetch(`https://translation.googleapis.com/language/translate/v2?key=${encodeURIComponent(apiKey)}`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ q: [source.title, source.narrationText], source: source.languageCode, target: dto.targetLanguageCode, format: 'text' }),
+          body: JSON.stringify({ q: [source.title, source.narrationText], source: source.languageCode, target: targetCode, format: 'text' }),
         });
         if (response.ok) {
           const payload = await response.json() as { data?: { translations?: { translatedText?: string }[] } };
@@ -113,7 +122,7 @@ export class ContentService {
     if (!translatedText) {
       try {
         const translateGtx = async (text: string): Promise<string> => {
-          const res = await fetch(`https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=${encodeURIComponent(dto.targetLanguageCode)}&dt=t&q=${encodeURIComponent(text)}`);
+          const res = await fetch(`https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=${encodeURIComponent(targetCode)}&dt=t&q=${encodeURIComponent(text)}`);
           if (!res.ok) return '';
           const data = await res.json() as [ [string, string][] ];
           return Array.isArray(data?.[0]) ? data[0].map((item) => item[0]).join('') : '';
@@ -124,7 +133,7 @@ export class ContentService {
           translateGtx(source.narrationText),
         ]);
         if (autoText) {
-          translatedTitle = autoTitle || `[${dto.targetLanguageCode.toUpperCase()}] ${source.title}`;
+          translatedTitle = autoTitle || `[${targetCode.toUpperCase()}] ${source.title}`;
           translatedText = autoText;
         }
       } catch {
@@ -134,12 +143,21 @@ export class ContentService {
 
     // 3. Chế độ Mock / Test cục bộ: tự tạo bản dịch nếu không có API key hoặc gọi thất bại
     if (!translatedText) {
-      const targetLang = dto.targetLanguageCode.toUpperCase();
+      const targetLang = targetCode.toUpperCase();
       translatedTitle = `[${targetLang}] ${source.title}`;
       translatedText = `[Bản dịch tự động ${targetLang}] ${source.narrationText}`;
     }
 
-    return this.repository.createTranslation(id, dto.targetLanguageCode, translatedTitle || `[${dto.targetLanguageCode.toUpperCase()}] ${source.title}`, translatedText);
+    try {
+      return await this.repository.createTranslation(
+        id,
+        targetCode,
+        translatedTitle || `[${targetCode.toUpperCase()}] ${source.title}`,
+        translatedText,
+      );
+    } catch (error) {
+      throw new BadRequestException(error instanceof Error ? error.message : 'Unable to create translation');
+    }
   }
   async create(dto: CreateContentDto) {
     try { return await this.repository.create(dto.poiId, dto.languageCode, dto.title, dto.narrationText); }

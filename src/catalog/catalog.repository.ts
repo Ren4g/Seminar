@@ -23,6 +23,14 @@ type EntityRow = {
   is_active: boolean;
 };
 
+type LocationRow = {
+  id: string;
+  is_active: boolean;
+  address: string | null;
+  latitude: string | number | null;
+  longitude: string | number | null;
+};
+
 @Injectable()
 export class CatalogRepository {
   private readonly pool: Pool;
@@ -138,8 +146,8 @@ export class CatalogRepository {
   }
 
   async listLocations(): Promise<Location[]> {
-    const result = await this.pool.query<EntityRow>(
-      `SELECT location_id AS id, is_active
+    const result = await this.pool.query<LocationRow>(
+      `SELECT location_id AS id, is_active, address, latitude, longitude
        FROM location
        ORDER BY location_id`,
     );
@@ -147,8 +155,8 @@ export class CatalogRepository {
   }
 
   async getLocation(id: number): Promise<Location | undefined> {
-    const result = await this.pool.query<EntityRow>(
-      `SELECT location_id AS id, is_active
+    const result = await this.pool.query<LocationRow>(
+      `SELECT location_id AS id, is_active, address, latitude, longitude
        FROM location
        WHERE location_id = $1`,
       [id],
@@ -157,25 +165,100 @@ export class CatalogRepository {
     return locations[0];
   }
 
-  async addLocation(translations: Translation[]): Promise<Location> {
+  async addLocation(
+    translations: Translation[],
+    address?: string | null,
+    latitude?: number | null,
+    longitude?: number | null,
+  ): Promise<Location> {
     await this.assertTranslations(translations);
     const client = await this.pool.connect();
     try {
       await client.query('BEGIN');
-      const locationResult = await client.query<EntityRow>(
-        `INSERT INTO location (is_active) VALUES (TRUE)
-         RETURNING location_id AS id, is_active`,
+      const locationResult = await client.query<LocationRow>(
+        `INSERT INTO location (is_active, address, latitude, longitude)
+         VALUES (TRUE, $1, $2, $3)
+         RETURNING location_id AS id, is_active, address, latitude, longitude`,
+        [address ?? null, latitude ?? null, longitude ?? null],
       );
       const location = locationResult.rows[0];
       await this.insertTranslations(client, 'location_translation', 'location_id', location.id, translations);
       await client.query('COMMIT');
-      return { id: Number(location.id), isActive: location.is_active, translations };
+      return {
+        id: Number(location.id),
+        isActive: location.is_active,
+        address: location.address ?? null,
+        latitude: location.latitude !== null && location.latitude !== undefined ? Number(location.latitude) : null,
+        longitude: location.longitude !== null && location.longitude !== undefined ? Number(location.longitude) : null,
+        translations,
+      };
     } catch (error) {
       await client.query('ROLLBACK');
       throw error;
     } finally {
       client.release();
     }
+  }
+
+  async updateLocation(
+    id: number,
+    data: {
+      translations?: Translation[];
+      address?: string | null;
+      latitude?: number | null;
+      longitude?: number | null;
+      isActive?: boolean;
+    },
+  ): Promise<Location | undefined> {
+    if (data.translations) {
+      await this.assertTranslations(data.translations);
+    }
+    const client = await this.pool.connect();
+    try {
+      await client.query('BEGIN');
+      const sets: string[] = [];
+      const values: any[] = [];
+      let idx = 1;
+
+      if (data.address !== undefined) {
+        sets.push(`address = $${idx++}`);
+        values.push(data.address);
+      }
+      if (data.latitude !== undefined) {
+        sets.push(`latitude = $${idx++}`);
+        values.push(data.latitude);
+      }
+      if (data.longitude !== undefined) {
+        sets.push(`longitude = $${idx++}`);
+        values.push(data.longitude);
+      }
+      if (data.isActive !== undefined) {
+        sets.push(`is_active = $${idx++}`);
+        values.push(data.isActive);
+      }
+
+      if (sets.length > 0) {
+        values.push(id);
+        await client.query(
+          `UPDATE location SET ${sets.join(', ')} WHERE location_id = $${idx}`,
+          values,
+        );
+      }
+
+      if (data.translations && data.translations.length > 0) {
+        await client.query('DELETE FROM location_translation WHERE location_id = $1', [id]);
+        await this.insertTranslations(client, 'location_translation', 'location_id', String(id), data.translations);
+      }
+
+      await client.query('COMMIT');
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
+    }
+
+    return this.getLocation(id);
   }
 
   async listPois(locationId?: number): Promise<Poi[]> {
@@ -337,7 +420,7 @@ export class CatalogRepository {
     }
   }
 
-  private async withLocationTranslations(rows: EntityRow[]): Promise<Location[]> {
+  private async withLocationTranslations(rows: LocationRow[]): Promise<Location[]> {
     if (rows.length === 0) return [];
     const ids = rows.map((row) => row.id);
     const result = await this.pool.query<TranslationRow>(
@@ -351,6 +434,9 @@ export class CatalogRepository {
     return rows.map((row) => ({
       id: Number(row.id),
       isActive: row.is_active,
+      address: row.address ?? null,
+      latitude: row.latitude !== null && row.latitude !== undefined ? Number(row.latitude) : null,
+      longitude: row.longitude !== null && row.longitude !== undefined ? Number(row.longitude) : null,
       translations: grouped.get(row.id) ?? [],
     }));
   }

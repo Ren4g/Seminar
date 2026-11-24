@@ -3,6 +3,8 @@ import type { ChangeEvent, FormEvent, ReactNode } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { QRCodeCanvas } from 'qrcode.react';
 import { api, API_URL, type ApiAnalytics, type ApiContent, type ApiVoice, type ApiLanguage, type ApiLocation, type ApiPoi, type ApiQr, type ApiReviewEvent, type ApiUser, ApiError } from './api';
+import { LocationMapPicker } from './LocationMapPicker';
+import { VisitorMap } from './VisitorMap';
 import './styles.css';
 
 type Status = '\u0110ang so\u1ea1n' | 'Ch\u1edd duy\u1ec7t' | '\u0110\u00e3 duy\u1ec7t' | '\u0110\u00e3 xu\u1ea5t b\u1ea3n' | '\u0110\u00e3 g\u1ee1 xu\u1ea5t b\u1ea3n' | 'C\u1ea7n r\u00e0 so\u00e1t' | 'B\u1ecb t\u1eeb ch\u1ed1i';
@@ -71,15 +73,16 @@ function StatusBadge({ status }: { status: Status }) {
 
 const VISITOR_COPY = {
   vi: {
-    discover: 'Kh\u00e1m ph\u00e1', language: 'Ng\u00f4n ng\u1eef', footer: 'Thuy\u1ebft minh \u0111a ng\u00f4n ng\u1eef, ngay t\u1ea1i \u0111i\u1ec3m \u0111\u1ebfn.',
-    heroLine1: 'M\u1ed7i \u0111i\u1ec3m \u0111\u1ebfn,', heroLine2: 'm\u1ed9t c\u00e2u chuy\u1ec7n ri\u00eang.', heroSubtitle: 'Ch\u1ecdn m\u1ed9t n\u01a1i, nghe nh\u1eefng c\u00e2u chuy\u1ec7n theo ng\u00f4n ng\u1eef c\u1ee7a b\u1ea1n.',
-    explore: 'Kh\u00e1m ph\u00e1 \u0111\u1ecba \u0111i\u1ec3m', featured: '\u0110i\u1ec3m tham quan n\u1ed5i b\u1eadt', loadingFeatured: '\u0110ang t\u1ea3i \u0111i\u1ec3m tham quan\u2026',
-    featuredEmpty: '\u0110\u1ecba \u0111i\u1ec3m s\u1eafp \u0111\u01b0\u1ee3c c\u1eadp nh\u1eadt.', placesHeading: 'Ch\u1ecdn n\u01a1i b\u1ea1n mu\u1ed1n \u0111\u1ebfn.', poiSingular: '\u0111i\u1ec3m tham quan', poiPlural: '\u0111i\u1ec3m tham quan',
-    loadingPlaces: '\u0110ang t\u1ea3i \u0111\u1ecba \u0111i\u1ec3m\u2026', noPlaces: 'Ch\u01b0a c\u00f3 \u0111\u1ecba \u0111i\u1ec3m n\u00e0o \u0111\u01b0\u1ee3c xu\u1ea5t b\u1ea3n.',
-    defaultLocationDescription: 'Kh\u00e1m ph\u00e1 nh\u1eefng c\u00e2u chuy\u1ec7n v\u00e0 \u0111i\u1ec3m tham quan t\u1ea1i \u0111\u00e2y.', placeCount: '\u0111i\u1ec3m', historyHeading: 'L\u1ecbch s\u1eed nghe tr\u00ean thi\u1ebft b\u1ecb.', clearHistory: 'X\u00f3a t\u1ea5t c\u1ea3 l\u1ecbch s\u1eed', removeHistory: 'X\u00f3a m\u1ee5c n\u00e0y kh\u1ecfi l\u1ecbch s\u1eed',
-    back: 'T\u1ea5t c\u1ea3 \u0111\u1ecba \u0111i\u1ec3m', locationPrefix: '\u0110i\u1ec3m', loadingContent: '\u0110ang t\u1ea3i thuy\u1ebft minh\u2026', missingContent: 'Ch\u01b0a c\u00f3 n\u1ed9i dung cho \u0111i\u1ec3m n\u00e0y.', chooseOther: 'Ch\u1ecdn m\u1ed9t \u0111i\u1ec3m kh\u00e1c', noAudio: 'N\u1ed9i dung n\u00e0y ch\u01b0a c\u00f3 audio.',
-    languageHint: 'B\u1ea1n c\u00f3 th\u1ec3 \u0111\u1ed5i ng\u00f4n ng\u1eef \u1edf ph\u00eda tr\u00ean \u0111\u1ec3 nghe b\u1ea3n d\u1ecbch t\u01b0\u01a1ng \u1ee9ng.',
-    fallbackLead: 'Ch\u01b0a c\u00f3 b\u1ea3n ', fallbackMiddle: ', \u0111ang hi\u1ec3n th\u1ecb ', fallbackEnd: '.',
+    discover: 'Khám phá', language: 'Ngôn ngữ', footer: 'Thuyết minh đa ngôn ngữ, ngay tại điểm đến.',
+    heroLine1: 'Mỗi điểm đến,', heroLine2: 'một câu chuyện riêng.', heroSubtitle: 'Chọn một nơi, nghe những câu chuyện theo ngôn ngữ của bạn.',
+    explore: 'Khám phá địa điểm', featured: 'Điểm tham quan nổi bật', loadingFeatured: 'Đang tải điểm tham quan…',
+    featuredEmpty: 'Địa điểm sắp được cập nhật.', placesHeading: 'Chọn nơi bạn muốn đến.', poiSingular: 'điểm tham quan', poiPlural: 'điểm tham quan',
+    loadingPlaces: 'Đang tải địa điểm…', noPlaces: 'Chưa có địa điểm nào được xuất bản.',
+    defaultLocationDescription: 'Khám phá những câu chuyện và điểm tham quan tại đây.', placeCount: 'điểm', historyHeading: 'Lịch sử nghe trên thiết bị.', clearHistory: 'Xóa tất cả lịch sử', removeHistory: 'Xóa mục này khỏi lịch sử',
+    back: 'Tất cả địa điểm', locationPrefix: 'Điểm', loadingContent: 'Đang tải thuyết minh…', missingContent: 'Chưa có nội dung cho điểm này.', chooseOther: 'Chọn một điểm khác', noAudio: 'Nội dung này chưa có audio.',
+    languageHint: 'Bạn có thể đổi ngôn ngữ ở phía trên để nghe bản dịch tương ứng.',
+    fallbackLead: 'Chưa có bản ', fallbackMiddle: ', đang hiển thị ', fallbackEnd: '.',
+    map: 'Bản đồ', viewMap: 'Xem trên bản đồ', viewList: 'Danh sách địa điểm',
   },
   en: {
     discover: 'Discover', language: 'Language', footer: 'Multilingual audio stories, right where you are.',
@@ -92,6 +95,7 @@ const VISITOR_COPY = {
     chooseOther: 'Choose another place', noAudio: 'Audio is not available for this story yet.',
     languageHint: 'Choose another language above to hear its version of this story.',
     fallbackLead: 'No ', fallbackMiddle: ' version is available; showing ', fallbackEnd: '.',
+    map: 'Map', viewMap: 'View on map', viewList: 'Places list',
   },
 } as const;
 
@@ -102,6 +106,8 @@ function VisitorApp() {
   const poiParam = params.get('poiId');
   const poiId = poiParam ? Number(poiParam) : null;
   const isQrSource = params.get('source') === 'qr' || params.has('qr');
+  const isMapRoute = window.location.pathname === '/map' || params.get('tab') === 'map' || params.get('view') === 'map';
+  const [viewMode, setViewMode] = useState<'list' | 'map'>(isMapRoute ? 'map' : 'list');
   const [language, setLanguage] = useState(params.get('language') || 'en');
   const [content, setContent] = useState<ApiContent | null>(null);
   const [loading, setLoading] = useState(true);
@@ -253,9 +259,60 @@ function VisitorApp() {
   const visitorShell = (children: ReactNode) => (
     <div className="visitor-page">
       <header className="visitor-nav">
-        <a className="visitor-brand" href="/">audio guide</a>
+        <a
+          className="visitor-brand"
+          href="/"
+          onClick={(e) => {
+            e.preventDefault();
+            setViewMode('list');
+            if (poiId) {
+              window.location.href = `/?language=${language}`;
+            } else {
+              const next = new URL(window.location.href);
+              next.pathname = '/';
+              next.searchParams.delete('view');
+              next.searchParams.delete('tab');
+              window.history.pushState(null, '', next);
+            }
+          }}
+        >
+          audio guide
+        </a>
         <nav className="visitor-nav-links" aria-label={copy.discover}>
-          <a href="/">{copy.discover}</a>
+          <button
+            type="button"
+            className={viewMode === 'list' && !poiId ? 'is-active' : ''}
+            onClick={() => {
+              setViewMode('list');
+              if (poiId) {
+                window.location.href = `/?language=${language}`;
+              } else {
+                const next = new URL(window.location.href);
+                next.pathname = '/';
+                next.searchParams.delete('view');
+                next.searchParams.delete('tab');
+                window.history.pushState(null, '', next);
+              }
+            }}
+          >
+            {copy.discover}
+          </button>
+          <button
+            type="button"
+            className={viewMode === 'map' && !poiId ? 'is-active' : ''}
+            onClick={() => {
+              setViewMode('map');
+              if (poiId) {
+                window.location.href = `/map?language=${language}`;
+              } else {
+                const next = new URL(window.location.href);
+                next.pathname = '/map';
+                window.history.pushState(null, '', next);
+              }
+            }}
+          >
+            🗺️ {copy.map}
+          </button>
           <a href="/admin">Content studio</a>
         </nav>
         <label className="visitor-language">
@@ -291,7 +348,28 @@ function VisitorApp() {
     </div>
   );
   if (!poiId) {
-    return visitorShell(<main className="visitor-home"><section className="visitor-hero"><div className="visitor-hero-copy"><h1>{copy.heroLine1}<br />{copy.heroLine2}</h1><p>{copy.heroSubtitle}</p><a className="visitor-primary" href="#visitor-places">{copy.explore} <span aria-hidden="true">&#x2193;</span></a></div><div className="visitor-featured" aria-label={copy.featured}>{placesLoading ? <p>{copy.loadingFeatured}</p> : pois.length ? pois.slice(0, 3).map((poi, index) => <a key={poi.id} href={`/visitor?poiId=${poi.id}&language=${language}`}><span>0{index + 1}</span><strong>{translate(poi.translations)}</strong><small>{translateLocation(locations.find((location) => location.id === poi.locationId)?.translations ?? [])}</small><span aria-hidden="true">&#x2197;</span></a>) : <p>{placesError || copy.featuredEmpty}</p>}</div></section><section className="visitor-home-section" id="visitor-places"><div className="visitor-home-heading"><div><h2>{copy.placesHeading}</h2></div><span>{pois.length} {pois.length === 1 ? copy.poiSingular : copy.poiPlural}</span></div>{placesLoading ? <p className="visitor-loading">{copy.loadingPlaces}</p> : placesError ? <p className="visitor-empty">{placesError}</p> : locations.length === 0 ? <p className="visitor-empty">{copy.noPlaces}</p> : <div className="visitor-place-list">{locations.map((location) => { const placePois = pois.filter((poi) => poi.locationId === location.id); const placeDescription = location.translations.find((item) => item.languageCode === language)?.shortDescription ?? location.translations.find((item) => item.languageCode === 'en')?.shortDescription ?? copy.defaultLocationDescription; return <article className="visitor-place" key={location.id}><div className="visitor-place-copy"><h3>{translateLocation(location.translations)}</h3><p>{placeDescription}</p><div className="visitor-place-pois">{placePois.map((poi) => <a key={poi.id} href={`/visitor?poiId=${poi.id}&language=${language}`}>{translate(poi.translations)} <span aria-hidden="true">&#x2197;</span></a>)}</div></div><span className="visitor-place-count">{placePois.length} {copy.placeCount}</span></article>; })}</div>}</section>{history.length > 0 && <section className="visitor-home-section visitor-recent"><div className="visitor-home-heading"><div><h2>{copy.historyHeading}</h2></div><button className="quiet-button" onClick={clearHistory}>{copy.clearHistory}</button></div>{history.map((item) => <a className="visitor-history-row" key={item.poiId} href={`/visitor?poiId=${item.poiId}&language=${language}`}><span>{item.title}</span><small>{new Date(item.listenedAt).toLocaleDateString(language === 'vi' ? 'vi-VN' : 'en-US')}</small><button type="button" className="history-remove-btn" title={copy.removeHistory} aria-label={copy.removeHistory} onClick={(event) => removeHistoryItem(item.poiId, event)}>&times;</button><span aria-hidden="true">&#x2197;</span></a>)}</section>}</main>);
+    if (viewMode === 'map') {
+      return visitorShell(
+        <VisitorMap
+          locations={locations}
+          pois={pois}
+          language={language}
+          onNavigateToPoi={(id) => {
+            window.location.href = `/visitor?poiId=${id}&language=${language}`;
+          }}
+          onSwitchToList={() => {
+            setViewMode('list');
+            const next = new URL(window.location.href);
+            next.pathname = '/';
+            next.searchParams.delete('view');
+            next.searchParams.delete('tab');
+            window.history.pushState(null, '', next);
+          }}
+        />
+      );
+    }
+
+    return visitorShell(<main className="visitor-home"><section className="visitor-hero"><div className="visitor-hero-copy"><h1>{copy.heroLine1}<br />{copy.heroLine2}</h1><p>{copy.heroSubtitle}</p><div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}><a className="visitor-primary" href="#visitor-places">{copy.explore} <span aria-hidden="true">&#x2193;</span></a><button type="button" className="visitor-primary" style={{ background: 'var(--paper)', color: 'var(--ink)' }} onClick={() => { setViewMode('map'); const next = new URL(window.location.href); next.pathname = '/map'; window.history.pushState(null, '', next); }}>🗺️ {copy.viewMap}</button></div></div><div className="visitor-featured" aria-label={copy.featured}>{placesLoading ? <p>{copy.loadingFeatured}</p> : pois.length ? pois.slice(0, 3).map((poi, index) => <a key={poi.id} href={`/visitor?poiId=${poi.id}&language=${language}`}><span>0{index + 1}</span><strong>{translate(poi.translations)}</strong><small>{translateLocation(locations.find((location) => location.id === poi.locationId)?.translations ?? [])}</small><span aria-hidden="true">&#x2197;</span></a>) : <p>{placesError || copy.featuredEmpty}</p>}</div></section><section className="visitor-home-section" id="visitor-places"><div className="visitor-home-heading"><div><h2>{copy.placesHeading}</h2></div><div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}><button type="button" className="quiet-button" onClick={() => { setViewMode('map'); const next = new URL(window.location.href); next.pathname = '/map'; window.history.pushState(null, '', next); }}>🗺️ {copy.viewMap}</button><span>{pois.length} {pois.length === 1 ? copy.poiSingular : copy.poiPlural}</span></div></div>{placesLoading ? <p className="visitor-loading">{copy.loadingPlaces}</p> : placesError ? <p className="visitor-empty">{placesError}</p> : locations.length === 0 ? <p className="visitor-empty">{copy.noPlaces}</p> : <div className="visitor-place-list">{locations.map((location) => { const placePois = pois.filter((poi) => poi.locationId === location.id); const placeDescription = location.translations.find((item) => item.languageCode === language)?.shortDescription ?? location.translations.find((item) => item.languageCode === 'en')?.shortDescription ?? copy.defaultLocationDescription; return <article className="visitor-place" key={location.id}><div className="visitor-place-copy"><h3>{translateLocation(location.translations)}</h3><p>{placeDescription}</p><div className="visitor-place-pois">{placePois.map((poi) => <a key={poi.id} href={`/visitor?poiId=${poi.id}&language=${language}`}>{translate(poi.translations)} <span aria-hidden="true">&#x2197;</span></a>)}</div></div><span className="visitor-place-count">{placePois.length} {copy.placeCount}</span></article>; })}</div>}</section>{history.length > 0 && <section className="visitor-home-section visitor-recent"><div className="visitor-home-heading"><div><h2>{copy.historyHeading}</h2></div><button className="quiet-button" onClick={clearHistory}>{copy.clearHistory}</button></div>{history.map((item) => <a className="visitor-history-row" key={item.poiId} href={`/visitor?poiId=${item.poiId}&language=${language}`}><span>{item.title}</span><small>{new Date(item.listenedAt).toLocaleDateString(language === 'vi' ? 'vi-VN' : 'en-US')}</small><button type="button" className="history-remove-btn" title={copy.removeHistory} aria-label={copy.removeHistory} onClick={(event) => removeHistoryItem(item.poiId, event)}>&times;</button><span aria-hidden="true">&#x2197;</span></a>)}</section>}</main>);
   }
 
   const fallback = Boolean(content && content.languageCode.toLowerCase() !== language.toLowerCase());
@@ -324,7 +402,131 @@ function CatalogPanel({ section, token, onToast, onPoisChange, onLanguagesChange
   const [voices, setVoices] = useState<ApiVoice[]>([]);
   const [expandedLang, setExpandedLang] = useState<string | null>(null);
   const [entityKind, setEntityKind] = useState<'location' | 'poi'>('poi');
-  const [form, setForm] = useState({ code: 'ja', name: 'Tiếng Nhật (Japanese)', nameVi: '', nameEn: '', locationId: '', title: '', voice: 'ErXwobaYiN019PkySvjV' });
+  const [form, setForm] = useState({
+    code: 'ja',
+    name: 'Tiếng Nhật (Japanese)',
+    nameVi: '',
+    nameEn: '',
+    locationId: '',
+    title: '',
+    voice: 'ErXwobaYiN019PkySvjV',
+    address: '',
+    latitude: null as number | null,
+    longitude: null as number | null,
+  });
+  const [geocodingBusy, setGeocodingBusy] = useState(false);
+  const [geocodingStatus, setGeocodingStatus] = useState<{ type: 'success' | 'error' | 'idle'; text: string }>({ type: 'idle', text: '' });
+
+  const [editingLocation, setEditingLocation] = useState<ApiLocation | null>(null);
+  const [editForm, setEditForm] = useState({
+    nameVi: '',
+    nameEn: '',
+    address: '',
+    latitude: null as number | null,
+    longitude: null as number | null,
+  });
+  const [editGeocodingBusy, setEditGeocodingBusy] = useState(false);
+  const [editGeocodingStatus, setEditGeocodingStatus] = useState<{ type: 'success' | 'error' | 'idle'; text: string }>({ type: 'idle', text: '' });
+
+  const triggerGeocode = async (addressToSearch: string, isEditing = false) => {
+    if (!addressToSearch.trim()) {
+      onToast('Vui lòng nhập địa chỉ trước khi tìm vị trí');
+      return;
+    }
+    if (isEditing) {
+      setEditGeocodingBusy(true);
+      setEditGeocodingStatus({ type: 'idle', text: 'Đang tra cứu tọa độ từ địa chỉ...' });
+    } else {
+      setGeocodingBusy(true);
+      setGeocodingStatus({ type: 'idle', text: 'Đang tra cứu tọa độ từ địa chỉ...' });
+    }
+
+    try {
+      const res = await api.geocodeAddress(token, addressToSearch.trim());
+      if (res.found && res.latitude != null && res.longitude != null) {
+        if (isEditing) {
+          setEditForm((prev) => ({
+            ...prev,
+            latitude: res.latitude!,
+            longitude: res.longitude!,
+          }));
+          setEditGeocodingStatus({
+            type: 'success',
+            text: `Đã tìm thấy: (${res.latitude}, ${res.longitude})`,
+          });
+        } else {
+          setForm((prev) => ({
+            ...prev,
+            latitude: res.latitude!,
+            longitude: res.longitude!,
+          }));
+          setGeocodingStatus({
+            type: 'success',
+            text: `Đã tìm thấy: (${res.latitude}, ${res.longitude})`,
+          });
+        }
+        onToast('Đã xác định tọa độ từ địa chỉ.');
+      } else {
+        const msg = res.message || 'Không tìm thấy tọa độ. Bạn có thể chấm tay trên bản đồ bên dưới.';
+        if (isEditing) setEditGeocodingStatus({ type: 'error', text: msg });
+        else setGeocodingStatus({ type: 'error', text: msg });
+        onToast('Không tìm thấy tọa độ cho địa chỉ này.');
+      }
+    } catch {
+      const msg = 'Lỗi kết nối Geocoding. Bạn có thể chấm tay vị trí trên bản đồ.';
+      if (isEditing) setEditGeocodingStatus({ type: 'error', text: msg });
+      else setGeocodingStatus({ type: 'error', text: msg });
+      onToast('Không thể kết nối dịch vụ geocoding.');
+    } finally {
+      if (isEditing) setEditGeocodingBusy(false);
+      else setGeocodingBusy(false);
+    }
+  };
+
+  const startEditLocation = (loc: ApiLocation) => {
+    const viName = loc.translations.find((t) => t.languageCode === 'vi')?.name || '';
+    const enName = loc.translations.find((t) => t.languageCode === 'en')?.name || '';
+    setEditingLocation(loc);
+    setEditForm({
+      nameVi: viName,
+      nameEn: enName,
+      address: loc.address || '',
+      latitude: loc.latitude != null ? Number(loc.latitude) : null,
+      longitude: loc.longitude != null ? Number(loc.longitude) : null,
+    });
+    setEditGeocodingStatus({ type: 'idle', text: '' });
+  };
+
+  const saveEditLocation = async (e: FormEvent) => {
+    e.preventDefault();
+    if (!editingLocation) return;
+    const enName = editForm.nameEn.trim() || editForm.nameVi.trim();
+    const viName = editForm.nameVi.trim() || editForm.nameEn.trim();
+    if (!enName) {
+      onToast('Vui lòng nhập tên địa điểm');
+      return;
+    }
+    setBusy(true);
+    try {
+      const translations = [
+        { languageCode: 'en', name: enName },
+        ...(viName !== enName ? [{ languageCode: 'vi', name: viName }] : [{ languageCode: 'vi', name: viName }]),
+      ];
+      await api.updateLocation(token, editingLocation.id, {
+        translations,
+        address: editForm.address.trim() || undefined,
+        latitude: editForm.latitude,
+        longitude: editForm.longitude,
+      });
+      setEditingLocation(null);
+      await reload();
+      onToast('Đã cập nhật thông tin địa điểm và tọa độ.');
+    } catch (err) {
+      onToast(err instanceof Error ? err.message : 'Không thể cập nhật địa điểm');
+    } finally {
+      setBusy(false);
+    }
+  };
   const [busy, setBusy] = useState(false);
   const [panelMessage, setPanelMessage] = useState('');
   const reload = async () => {
@@ -445,7 +647,13 @@ function CatalogPanel({ section, token, onToast, onPoisChange, onLanguagesChange
             { languageCode: 'en', name: enName },
             ...(viName && viName !== enName ? [{ languageCode: 'vi', name: viName }] : [{ languageCode: 'vi', name: viName || enName }]),
           ];
-          await api.createLocation(token, translations);
+          await api.createLocation(
+            token,
+            translations,
+            form.address.trim() || undefined,
+            form.latitude != null ? form.latitude : undefined,
+            form.longitude != null ? form.longitude : undefined,
+          );
         } else {
           if (!form.locationId) {
             onToast('Vui lòng chọn Địa điểm cha cho POI');
@@ -471,7 +679,8 @@ function CatalogPanel({ section, token, onToast, onPoisChange, onLanguagesChange
         const nextPreset = PRESET_LANGUAGES.find((p) => p.code !== form.code) ?? PRESET_LANGUAGES[0];
         setForm((prev) => ({ ...prev, code: nextPreset.code, name: nextPreset.name, voice: nextPreset.defaultVoice }));
       } else {
-        setForm((prev) => ({ ...prev, nameVi: '', nameEn: '' }));
+        setForm((prev) => ({ ...prev, nameVi: '', nameEn: '', address: '', latitude: null, longitude: null }));
+        setGeocodingStatus({ type: 'idle', text: '' });
       }
       onToast('Đã lưu thay đổi.');
     } catch (error) {
@@ -528,6 +737,64 @@ function CatalogPanel({ section, token, onToast, onPoisChange, onLanguagesChange
           <>
             <label>Tên địa điểm (tiếng Việt)<input value={form.nameVi} onChange={(event) => setForm({ ...form, nameVi: event.target.value })} placeholder="Ví dụ: Hoàng Thành Thăng Long" required /></label>
             <label>Tên tiếng Anh (English)<input value={form.nameEn} onChange={(event) => setForm({ ...form, nameEn: event.target.value })} placeholder="Ví dụ: Imperial Citadel of Thang Long" /></label>
+            <label style={{ gridColumn: '1 / -1' }}>
+              Địa chỉ
+              <input
+                value={form.address}
+                onChange={(event) => setForm({ ...form, address: event.target.value })}
+                placeholder="Ví dụ: 19C Hoàng Diệu, Quán Thánh, Ba Đình, Hà Nội"
+              />
+            </label>
+            <div style={{ gridColumn: '1 / -1' }}>
+              <div className="geocode-actions-row">
+                <button
+                  type="button"
+                  className="geocode-btn"
+                  disabled={geocodingBusy || !form.address.trim()}
+                  onClick={() => triggerGeocode(form.address, false)}
+                >
+                  {geocodingBusy ? 'Đang tìm...' : '🔍 Tìm vị trí (Geocode)'}
+                </button>
+                {geocodingStatus.text && (
+                  <span className={`geocode-status is-${geocodingStatus.type}`}>
+                    {geocodingStatus.text}
+                  </span>
+                )}
+              </div>
+              <div className="coords-display-row">
+                <label>
+                  Vĩ độ (Latitude)
+                  <input
+                    type="number"
+                    step="any"
+                    value={form.latitude ?? ''}
+                    onChange={(e) => setForm({ ...form, latitude: e.target.value ? Number(e.target.value) : null })}
+                    placeholder="Chấm tay hoặc tự động điền"
+                  />
+                </label>
+                <label>
+                  Kinh độ (Longitude)
+                  <input
+                    type="number"
+                    step="any"
+                    value={form.longitude ?? ''}
+                    onChange={(e) => setForm({ ...form, longitude: e.target.value ? Number(e.target.value) : null })}
+                    placeholder="Chấm tay hoặc tự động điền"
+                  />
+                </label>
+              </div>
+              <div style={{ marginTop: '10px' }}>
+                <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--ink)' }}>
+                  Bản đồ vị trí (Kéo ghim hoặc nhấp chuột để chấm tay tọa độ):
+                </span>
+                <LocationMapPicker
+                  latitude={form.latitude}
+                  longitude={form.longitude}
+                  onChange={(lat, lng) => setForm((prev) => ({ ...prev, latitude: lat, longitude: lng }))}
+                  height={220}
+                />
+              </div>
+            </div>
           </>
         ) : (
           <>
@@ -637,16 +904,36 @@ function CatalogPanel({ section, token, onToast, onPoisChange, onLanguagesChange
             <div style={{ padding: '8px 4px 4px', gridColumn: '1 / -1', fontWeight: 600, color: 'var(--ink)' }}>
               1. Danh sách Địa điểm (Locations)
             </div>
-            {locations.length === 0 ? <p className="empty-state">Chưa có địa điểm nào.</p> : locations.map((item) => (
-              <div className="crud-row" key={`location-${item.id}`}>
-                <strong>Location #{item.id}</strong>
-                <span>{item.translations.map((translation) => translation.name).join(' · ')}</span>
-                <span>{pois.filter((poi) => poi.locationId === item.id).length} POI trực thuộc</span>
-                <span className={`status status--${item.isActive ? 'published' : 'draft'}`}>{item.isActive ? 'Hoạt động' : 'Tạm tắt'}</span>
-                <button className="quiet-button" onClick={() => toggleCatalog('location', item.id, item.isActive)}>{item.isActive ? 'Tắt' : 'Bật'}</button>
-                <button className="quiet-button" onClick={() => deleteLocation(item.id)}>Xóa</button>
-              </div>
-            ))}
+            {locations.length === 0 ? <p className="empty-state">Chưa có địa điểm nào.</p> : locations.map((item) => {
+              const hasCoords = item.latitude != null && item.longitude != null && !Number.isNaN(Number(item.latitude)) && !Number.isNaN(Number(item.longitude));
+              return (
+                <div className="crud-row" key={`location-${item.id}`}>
+                  <strong>Location #{item.id}</strong>
+                  <span>{item.translations.map((translation) => translation.name).join(' · ')}</span>
+                  <span>
+                    {item.address ? (
+                      <span title={item.address} style={{ fontSize: '12px', color: 'var(--ink)' }}>📍 {item.address.length > 25 ? item.address.slice(0, 25) + '…' : item.address}</span>
+                    ) : (
+                      <small style={{ color: 'var(--muted)' }}>Chưa có địa chỉ</small>
+                    )}
+                  </span>
+                  <span>
+                    {hasCoords ? (
+                      <span className="location-badge-has-coords" title={`Lat: ${item.latitude}, Lng: ${item.longitude}`}>
+                        ✓ {Number(item.latitude).toFixed(4)}, {Number(item.longitude).toFixed(4)}
+                      </span>
+                    ) : (
+                      <span className="location-badge-no-coords">Chưa có tọa độ</span>
+                    )}
+                  </span>
+                  <span>{pois.filter((poi) => poi.locationId === item.id).length} POI trực thuộc</span>
+                  <span className={`status status--${item.isActive ? 'published' : 'draft'}`}>{item.isActive ? 'Hoạt động' : 'Tạm tắt'}</span>
+                  <button className="quiet-button" type="button" onClick={() => startEditLocation(item)}>Sửa</button>
+                  <button className="quiet-button" type="button" onClick={() => toggleCatalog('location', item.id, item.isActive)}>{item.isActive ? 'Tắt' : 'Bật'}</button>
+                  <button className="quiet-button" type="button" onClick={() => deleteLocation(item.id)}>Xóa</button>
+                </div>
+              );
+            })}
 
             <div style={{ padding: '16px 4px 4px', gridColumn: '1 / -1', fontWeight: 600, color: 'var(--ink)' }}>
               2. Danh sách Điểm tham quan (POIs)
@@ -668,6 +955,99 @@ function CatalogPanel({ section, token, onToast, onPoisChange, onLanguagesChange
           </>
         )}
       </div>
+
+      {editingLocation && (
+        <div className="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="edit-loc-title">
+          <form className="modal-card location-edit-modal-card" onSubmit={saveEditLocation}>
+            <button type="button" className="close-button" aria-label="Đóng" onClick={() => setEditingLocation(null)}>×</button>
+            <h2 id="edit-loc-title">Cập nhật Địa điểm #{editingLocation.id}</h2>
+
+            <label>
+              Tên địa điểm (tiếng Việt)
+              <input
+                value={editForm.nameVi}
+                onChange={(e) => setEditForm({ ...editForm, nameVi: e.target.value })}
+                required
+              />
+            </label>
+            <label>
+              Tên tiếng Anh (English)
+              <input
+                value={editForm.nameEn}
+                onChange={(e) => setEditForm({ ...editForm, nameEn: e.target.value })}
+              />
+            </label>
+            <label>
+              Địa chỉ
+              <input
+                value={editForm.address}
+                onChange={(e) => setEditForm({ ...editForm, address: e.target.value })}
+                placeholder="Ví dụ: 19C Hoàng Diệu, Quán Thánh, Ba Đình, Hà Nội"
+              />
+            </label>
+
+            <div className="geocode-actions-row">
+              <button
+                type="button"
+                className="geocode-btn"
+                disabled={editGeocodingBusy || !editForm.address.trim()}
+                onClick={() => triggerGeocode(editForm.address, true)}
+              >
+                {editGeocodingBusy ? 'Đang tìm...' : '🔍 Tìm vị trí (Geocode)'}
+              </button>
+              {editGeocodingStatus.text && (
+                <span className={`geocode-status is-${editGeocodingStatus.type}`}>
+                  {editGeocodingStatus.text}
+                </span>
+              )}
+            </div>
+
+            <div className="coords-display-row">
+              <label>
+                Vĩ độ (Latitude)
+                <input
+                  type="number"
+                  step="any"
+                  value={editForm.latitude ?? ''}
+                  onChange={(e) => setEditForm({ ...editForm, latitude: e.target.value ? Number(e.target.value) : null })}
+                  placeholder="Chưa có vĩ độ"
+                />
+              </label>
+              <label>
+                Kinh độ (Longitude)
+                <input
+                  type="number"
+                  step="any"
+                  value={editForm.longitude ?? ''}
+                  onChange={(e) => setEditForm({ ...editForm, longitude: e.target.value ? Number(e.target.value) : null })}
+                  placeholder="Chưa có kinh độ"
+                />
+              </label>
+            </div>
+
+            <div style={{ marginTop: '10px' }}>
+              <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--ink)' }}>
+                Bản đồ vị trí (Kéo ghim hoặc click để chấm tay lại):
+              </span>
+              <LocationMapPicker
+                latitude={editForm.latitude}
+                longitude={editForm.longitude}
+                onChange={(lat, lng) => setEditForm((prev) => ({ ...prev, latitude: lat, longitude: lng }))}
+                height={240}
+              />
+            </div>
+
+            <div className="modal-actions" style={{ marginTop: '16px' }}>
+              <button type="button" className="quiet-button" onClick={() => setEditingLocation(null)}>
+                Hủy
+              </button>
+              <button type="submit" className="primary-button" disabled={busy}>
+                {busy ? 'Đang lưu…' : 'Lưu thay đổi'}
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
     </section>
   );
 }
@@ -809,6 +1189,29 @@ function App() {
   const fieldsReady = Boolean(editTitle.trim() && editBody.trim());
   const sourceCounterpart = items.find((item) => item.poiId === selected.poiId && item.languageCode !== selected.languageCode);
   const pendingCount = useMemo(() => items.filter((item) => item.status === 'Chờ duyệt').length, [items]);
+  const [selectedTargetLang, setSelectedTargetLang] = useState<string>('');
+  const [isTranslating, setIsTranslating] = useState<boolean>(false);
+
+  const targetLanguages = useMemo(() => {
+    if (!selected?.languageCode) return [];
+    return languages.filter(
+      (lang) => lang.isActive && lang.code.toLowerCase() !== selected.languageCode?.toLowerCase()
+    );
+  }, [languages, selected?.languageCode]);
+
+  useEffect(() => {
+    if (targetLanguages.length > 0) {
+      const currentExists = targetLanguages.some((l) => l.code === selectedTargetLang);
+      if (!currentExists) {
+        const preferred = targetLanguages.find((l) => l.code === (selected.languageCode?.toLowerCase() === 'vi' ? 'en' : 'vi'))
+          ?? targetLanguages[0];
+        setSelectedTargetLang(preferred.code);
+      }
+    } else {
+      setSelectedTargetLang('');
+    }
+  }, [selected?.languageCode, targetLanguages]);
+
   useEffect(() => { setEditTitle(selected.title); setEditBody(selected.body); }, [selected.id, selected.title, selected.body]);
 
   useEffect(() => {
@@ -959,15 +1362,53 @@ function App() {
 
   const translateSelected = async () => {
     if (!selected?.versionId) return;
-    const target = selected.languageCode === 'vi' ? 'en' : 'vi';
+    if (!selectedTargetLang) {
+      setToast('Vui lòng chọn ngôn ngữ đích.');
+      return;
+    }
+
+    const targetLangInfo = targetLanguages.find((l) => l.code === selectedTargetLang);
+    const targetName = targetLangInfo?.name || selectedTargetLang.toUpperCase();
+
+    // Kiểm tra xem đã có bản ghi nào cho ngôn ngữ đích này ở cùng POI chưa
+    const existingTarget = items.find(
+      (item) => item.poiId === selected.poiId && item.languageCode?.toLowerCase() === selectedTargetLang.toLowerCase()
+    );
+
+    if (existingTarget) {
+      if (existingTarget.rawStatus === 'PENDING_REVIEW') {
+        const msg = `Bản dịch ${targetName} của điểm tham quan này đang ở trạng thái Chờ duyệt. Không thể tạo bản dịch mới lúc này.`;
+        setToast(msg);
+        window.alert(msg);
+        return;
+      }
+      if (['DRAFT', 'REJECTED'].includes(existingTarget.rawStatus ?? '')) {
+        const ok = window.confirm(
+          `Điểm tham quan này đã có bản ${existingTarget.status.toLowerCase()} cho ngôn ngữ ${targetName} ("${existingTarget.title}").\n\nBạn có chắc chắn muốn dịch tự động và ghi đè nội dung bản nháp này không?`
+        );
+        if (!ok) return;
+      }
+    }
+
+    setIsTranslating(true);
     try {
-      const translated = await api.translateContent(token, selected.versionId, target);
+      const translated = await api.translateContent(token, selected.versionId, selectedTargetLang);
       const next = mapContent(translated, items.length);
-      setItems((current) => [...current, next]);
+
+      // Nếu ghi đè bản nháp cũ thì cập nhật item trong danh sách, nếu chưa có thì thêm mới
+      setItems((current) =>
+        current.some((item) => item.versionId === next.versionId)
+          ? current.map((item) => (item.versionId === next.versionId ? { ...item, ...next, updated: 'Vừa cập nhật' } : item))
+          : [...current, next]
+      );
+
       setSelectedId(next.id);
-      setSelectedId(next.id);
-      setToast('Đã tạo bản dịch nháp, cần rà soát trước khi gửi duyệt.');
-    } catch (error) { setToast(error instanceof Error ? error.message : 'Không thể dịch nội dung'); }
+      setToast(`Đã tạo bản dịch tự động sang ${targetName} (Bản nháp - Cần rà soát).`);
+    } catch (error) {
+      setToast(error instanceof Error ? error.message : 'Không thể dịch nội dung');
+    } finally {
+      setIsTranslating(false);
+    }
   };
 
   const openHistory = async () => {
@@ -1048,10 +1489,40 @@ function App() {
               <section className="readiness-card"><div><strong>&#x110;i&#x1EC1;u ki&#x1EC7;n g&#x1EED;i duy&#x1EC7;t</strong><span>Ho&#xE0;n t&#x1EA5;t c&#xE1;c m&#x1EE5;c c&#xF2;n thi&#x1EBF;u tr&#x1B0;&#x1EDB;c khi g&#x1EED;i duy&#x1EC7;t.</span></div><ul><li className={editTitle.trim() ? 'is-ready' : 'is-missing'}>{editTitle.trim() ? <span>&#x2713;</span> : <span>&#x25CB;</span>} C&#xF3; ti&#xEA;u &#x111;&#x1EC1;</li><li className={editBody.trim() ? 'is-ready' : 'is-missing'}>{editBody.trim() ? <span>&#x2713;</span> : <span>&#x25CB;</span>} C&#xF3; v&#x103;n b&#x1EA3;n</li><li className={audioReady ? 'is-ready' : 'is-missing'}>{audioReady ? <span>&#x2713;</span> : <span>&#x25CB;</span>} Audio h&#x1EE3;p l&#x1EC7;, m&#x1EDB;i nh&#x1EA5;t</li><li className={!selected.needsReview ? 'is-ready' : 'is-missing'}>{!selected.needsReview ? <span>&#x2713;</span> : <span>&#x25CB;</span>} &#x110;&#xE3; ho&#xE0;n t&#x1EA5;t r&#xE0; so&#xE1;t</li></ul>{selected.needsReview && <button className="primary-button" onClick={async () => { if (!selected.versionId) return; try { const reviewed = await api.confirmReviewed(token, selected.versionId); const next = mapContent(reviewed, selected.id - 1); setItems((current) => current.map((item) => item.versionId === selected.versionId ? { ...item, ...next } : item)); setToast('Review confirmed.'); } catch (error) { setToast(error instanceof Error ? error.message : 'Could not confirm review'); } }}>X&#xE1;c nh&#x1EAD;n &#x111;&#xE3; r&#xE0; so&#xE1;t</button>}</section>
               <div className="audio-console">{selected.audioUrl ? <><div className="audio-console-head"><strong>Audio preview</strong><span>{selected.duration}</span></div><audio controls preload="metadata" src={selected.audioUrl} aria-label="Narration audio" /></> : <div className="audio-empty"><strong>Ch&#x1B0;a c&#xF3; audio</strong><span>T&#x1EA1;o b&#x1EB1;ng ElevenLabs ho&#x1EB7;c t&#x1EA3;i l&#xEA;n MP3 &#x111;&#x1EC3; ti&#x1EBF;p t&#x1EE5;c.</span></div>}</div>
               <div className="detail-actions workflow-actions">
-                <div className="secondary-actions">
+                <div className="secondary-actions" style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                   <button className="quiet-button" onClick={() => setShowVisitor(true)}>Xem tr&#x1B0;&#x1EDB;c nh&#x1B0; visitor</button>
                   <button className="quiet-button" onClick={openHistory}>L&#x1ECB;ch s&#x1EED; duy&#x1EC7;t</button>
-                  <button className="quiet-button" onClick={translateSelected}>D&#x1ECB;ch t&#x1EF1; &#x111;&#x1ED9;ng / {editBody.length.toLocaleString('vi-VN')} characters</button>
+                  <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                    {targetLanguages.length > 0 && (
+                      <select
+                        aria-label="Chọn ngôn ngữ đích"
+                        value={selectedTargetLang}
+                        onChange={(e) => setSelectedTargetLang(e.target.value)}
+                        style={{ minHeight: '34px', padding: '0 8px', borderRadius: '6px', border: '1px solid var(--line)', background: 'var(--paper)', fontSize: '11px', color: 'var(--ink)' }}
+                        title="Chọn ngôn ngữ đích cần dịch sang"
+                        disabled={isTranslating}
+                      >
+                        <option value="" disabled>-- Chọn ngôn ngữ đích --</option>
+                        {targetLanguages.map((l) => {
+                          const existing = items.find((it) => it.poiId === selected.poiId && it.languageCode?.toLowerCase() === l.code.toLowerCase());
+                          const statusNote = existing ? ` (${existing.status})` : '';
+                          return (
+                            <option key={l.code} value={l.code}>
+                              Dịch sang: {l.name} ({l.code.toUpperCase()}){statusNote}
+                            </option>
+                          );
+                        })}
+                      </select>
+                    )}
+                    <button
+                      className="quiet-button"
+                      disabled={!selectedTargetLang || isTranslating}
+                      onClick={translateSelected}
+                      title={!selectedTargetLang ? 'Vui lòng chọn ngôn ngữ đích' : `Dịch tự động nội dung này sang ${languageName(selectedTargetLang)}`}
+                    >
+                      {isTranslating ? 'Đang dịch…' : 'Dịch tự động'} / {editBody.length.toLocaleString('vi-VN')} characters
+                    </button>
+                  </div>
                 </div>
                 <div className="primary-action-group">
                   {selected.rawStatus !== 'PUBLISHED' && <button className={isDirty || !fieldsReady ? 'primary-button' : 'quiet-button'} disabled={!fieldsReady} onClick={saveContent}>L&#x1B0;u b&#x1EA3;n nh&#xE1;p</button>}
