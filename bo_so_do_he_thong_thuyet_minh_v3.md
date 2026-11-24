@@ -1,22 +1,35 @@
 # Bộ sơ đồ hệ thống thuyết minh tự động đa ngôn ngữ – Bản hoàn chỉnh v3
 
-> **Nguồn nghiệp vụ:** `dac_ta_use_case_hoan_chinh_v2.docx`, 29 trang, 34 Use Case.
+> **Nguồn nghiệp vụ:** `dac_ta_use_case_hoan_chinh_v2.docx`, 29 trang, 35 Use Case (đã bổ sung UC35 - Xem bản đồ).
 > **Mục tiêu:** chuyển đặc tả thành bộ sơ đồ có thể chỉnh sửa bằng Mermaid/PlantUML.
 > **Nguyên tắc:** luồng nghiệp vụ lấy từ đặc tả; các quyết định mô hình hóa được đánh dấu riêng; không tự thêm nghiệp vụ chưa được quy định.
 
 ## 0. Phạm vi và quy ước
 
-- 01 Use Case Diagram UML (PlantUML), bao phủ UC01–UC34.
-- **34 Activity Diagram độc lập**, mỗi sơ đồ tương ứng đúng một UC. Các luồng phụ/ngoại lệ được đưa vào nhánh quyết định hoặc nhánh lỗi.
+- 01 Use Case Diagram UML (PlantUML), bao phủ UC01–UC35.
+- **35 Activity Diagram độc lập**, mỗi sơ đồ tương ứng đúng một UC. Các luồng phụ/ngoại lệ được đưa vào nhánh quyết định hoặc nhánh lỗi.
 - 01 State Diagram cho vòng đời Content Version.
-- 01 ERD logic; các thực thể suy ra để đáp ứng UC34 được đánh dấu là đề xuất.
-- 06 Sequence Diagram cho các luồng liên thành phần có ý nghĩa kiến trúc.
-- 01 Component Diagram.
-- 01 ma trận truy vết.
+- 01 ERD logic; các thực thể suy ra để đáp ứng UC34 được đánh dấu là đề xuất; thực thể `LOCATION` bổ sung tọa độ (`latitude`, `longitude`) phục vụ tính năng Bản đồ.
+- 08 Sequence Diagram cho các luồng liên thành phần có ý nghĩa kiến trúc (bổ sung UC07 Geocoding và UC35 Xem bản đồ).
+- 01 Component Diagram (bổ sung dịch vụ tích hợp Bản đồ / Geocoding bên ngoài).
+- 01 ma trận truy vết (bao phủ đến UC35).
 
 **Ký hiệu:** `Draft` = Bản nháp; `Pending Review` = Chờ duyệt; `Rejected` = Bị từ chối; `Published` = Đã xuất bản; `Removed` = Đã gỡ; `Superseded` = Đã thay thế. `NeedsReview` là cờ rà soát của nội dung bản dịch, **không phải trạng thái phiên bản**.
 
-**Giới hạn nguồn:** đặc tả không quy định chi tiết UI, schema API, nhà cung cấp dịch/TTS, chiến lược retry/backoff, định dạng event analytics, retention, hay công nghệ triển khai. Các sơ đồ không tự quyết định các chi tiết đó.
+**Giới hạn nguồn:** đặc tả không quy định chi tiết UI, schema API, nhà cung cấp dịch/TTS/Bản đồ & Geocoding, chiến lược retry/backoff, định dạng event analytics, retention, hay công nghệ triển khai. Hệ thống phụ thuộc vào dịch vụ bản đồ/geocoding bên ngoài để chuyển đổi địa chỉ thành tọa độ và hiển thị bản đồ số; nhà cung cấp cụ thể chưa được lựa chọn và được đưa vào danh sách Câu hỏi mở. Các sơ đồ không tự quyết định các chi tiết đó.
+
+### Tham số cấu hình phi chức năng mặc định (Mục 5.2 tài liệu gốc)
+**[ĐÃ SỬA 16/11] (bổ sung, mã D13)** Bổ sung bảng tham số cấu hình đề xuất từ mục 5.2 của tài liệu gốc `dac_ta_use_case_hoan_chinh_v2.docx`:
+
+| Tham số | Giá trị đề xuất | Dùng ở |
+|---|---|---|
+| Số lần đăng nhập sai liên tiếp trước khi khóa tạm | 5 lần | UC01 |
+| Thời gian khóa tạm | 15 phút | UC01 |
+| Thời gian phiên không hoạt động | 30 phút | UC01, UC02 |
+| Thời hạn mã hoặc liên kết khôi phục mật khẩu | 30 phút | UC04 |
+| Định dạng audio tải lên | MP3 | UC22 |
+| Dung lượng audio tối đa | 20 MB | UC22 |
+| Độ dài văn bản tối đa mỗi nội dung | Theo giới hạn của dịch vụ dịch và TTS được chọn | UC13, UC17, UC20 |
 
 ## 1. Use Case Diagram (PlantUML – UML)
 
@@ -29,6 +42,7 @@ actor "Content Manager" as CM
 actor Visitor
 actor "Dịch vụ dịch tự động" as MT
 actor "Dịch vụ TTS" as TTS
+actor "Dịch vụ bản đồ & Geocoding" as MapService
 
 rectangle "Hệ thống thuyết minh tự động đa ngôn ngữ" {
 
@@ -66,6 +80,7 @@ rectangle "Hệ thống thuyết minh tự động đa ngôn ngữ" {
   usecase "UC32 - Quản lý QR Code cho POI" as U32
   usecase "UC33 - Quét QR Code và truy cập POI" as U33
   usecase "UC34 - Xem thống kê hoạt động" as U34
+  usecase "UC35 - Xem bản đồ" as U35
 }
 Admin -- U01
 CM -- U01
@@ -120,13 +135,23 @@ Admin -- U32
 CM -- U32
 Visitor -- U33
 Admin -- U34
-U19 .> U20 : <<extend>>
+Visitor -- U35
+Admin -- U35
+MapService -- U07
+MapService -- U35
+' U19 .> U20 : <<extend>>
 @enduml
 ```
 
-> Chỉ vẽ một quan hệ `extend`: UC19 → UC20, vì UC20 bước 3 mô tả việc đổi giọng đọc (UC19) là bước tùy chọn, và bắt buộc khi ngôn ngữ chưa có giọng mặc định. Không vẽ `include`/`extend` khác vì đặc tả chỉ mô tả các UC liên quan và điều hướng nghiệp vụ. Không gán MT/TTS vào các UC khác ngoài UC17/UC20.
+~~`U19 .> U20 : <<extend>>`~~
+**[ĐÃ SỬA 16/11] (loại bỏ vì tài liệu gốc không có, mã D1)**
 
-## 2. Activity Diagram – 34 sơ đồ độc lập
+~~> Chỉ vẽ một quan hệ `extend`: UC19 → UC20, vì UC20 bước 3 mô tả việc đổi giọng đọc (UC19) là bước tùy chọn, và bắt buộc khi ngôn ngữ chưa có giọng mặc định. Không vẽ `include`/`extend` khác vì đặc tả chỉ mô tả các UC liên quan và điều hướng nghiệp vụ. Không gán MT/TTS vào các UC khác ngoài UC17/UC20.~~
+**[ĐÃ SỬA 16/11] (loại bỏ vì tài liệu gốc không có, mã D1)**
+
+> **Ghi chú bổ sung UC35 (Tính năng Bản đồ):** Visitor và Administrator đều có quyền xem bản đồ; Administrator không có use case riêng ("Admin xem bản đồ giống người dùng"). UC07 tương tác với Dịch vụ Geocoding để tự động chuyển đổi địa chỉ thành tọa độ địa lý (vĩ độ, kinh độ) khi thêm mới hoặc sửa địa chỉ địa điểm; UC35 tương tác với Dịch vụ bản đồ để hiển thị lớp bản đồ và các marker địa điểm.
+
+## 2. Activity Diagram – 35 sơ đồ độc lập
 
 
 ### UC01 – Đăng nhập
@@ -223,17 +248,20 @@ flowchart TD
  D -- Khóa hoặc mở khóa --> G[Chọn trạng thái tài khoản]
  D -- Đặt lại mật khẩu --> H[Đặt mật khẩu mới]
  D -- Gán vai trò --> I[Chọn Administrator hoặc Content Manager]
- D -- Phân công --> J[Chọn địa điểm cho Content Manager]
+ D -- Phân công --> J2[Thay đổi địa điểm cho Content Manager]
  E --> L{Vai trò là Content Manager?}
  I --> L
- L -- Có --> J
+ L -- Có --> J[Chọn địa điểm cho Content Manager]
  L -- Không --> K[Kiểm tra dữ liệu]
  F --> K
  G --> K
  H --> K
  J --> M{Có ít nhất một địa điểm hoạt động hợp lệ?}
  M -- Không --> N[Yêu cầu chọn địa điểm hoạt động] --> J
- M -- Có --> T{Thu hồi phạm vi khi còn nội dung chờ duyệt?}
+ M -- Có --> K
+ J2 --> M2{Có ít nhất một địa điểm hoạt động hợp lệ?}
+ M2 -- Không --> N2[Yêu cầu chọn địa điểm hoạt động] --> J2
+ M2 -- Có --> T{Thu hồi phạm vi khi còn nội dung chờ duyệt?}
  T -- Có --> U[Cảnh báo; nội dung chờ vẫn do Administrator xử lý] --> K
  T -- Không --> K
  K --> O{Hợp lệ, không trùng, không vi phạm bảo vệ quản trị cuối?}
@@ -244,6 +272,9 @@ flowchart TD
  R -- Không --> W
  W --> Z
 ```
+
+~~M -- Có --> T{Thu hồi phạm vi khi còn nội dung chờ duyệt?}~~
+**[ĐÃ SỬA 16/11]** Tách nhánh: tạo mới Content Manager sau khi chọn địa điểm hợp lệ (`M -- Có --> K`) chuyển thẳng đến bước kiểm tra dữ liệu `K`; chỉ thao tác thay đổi phân công phạm vi (`D -- Phân công`) mới đi qua nút kiểm tra thu hồi phạm vi `T`. (Lý do: Tài khoản tạo mới chưa có nội dung nên không thể phát sinh thu hồi phạm vi đang có nội dung chờ duyệt theo mục 4.6.1 của UC05, mã lỗi D2)
 
 ### UC06 – Xem danh sách và chi tiết địa điểm
 
@@ -270,23 +301,36 @@ flowchart TD
  A --> B[Hiển thị danh sách]
  B --> C[Chọn thao tác]
  C --> D{Thao tác}
- D -- Thêm --> E[Nhập tên và mô tả theo ngôn ngữ]
- D -- Cập nhật --> F[Cập nhật thông tin đa ngôn ngữ]
+ D -- Thêm --> E[Nhập tên, mô tả theo ngôn ngữ và địa chỉ]
+ D -- Cập nhật --> F[Cập nhật thông tin đa ngôn ngữ / địa chỉ]
  D -- Đổi trạng thái --> H[Chọn hoạt động hoặc ngừng hoạt động]
  D -- Xóa --> G[Yêu cầu xóa địa điểm]
  E --> I{Hợp lệ và có tên tiếng Anh?}
  I -- Không --> E
- I -- Có --> Q[Xác nhận và lưu thay đổi]
+ I -- Có --> GC[Gọi dịch vụ Geocoding đổi địa chỉ thành tọa độ]
  F --> I2{Hợp lệ và có tên tiếng Anh?}
  I2 -- Không --> F
- I2 -- Có --> Q
+ I2 -- Có --> CHK_ADDR{Có thay đổi địa chỉ?}
+ CHK_ADDR -- Có --> GC
+ CHK_ADDR -- Không --> Q[Xác nhận và lưu thay đổi]
+ GC --> RES{Geocoding tìm ra và đúng vị trí?}
+ RES -- Thành công --> Q
+ RES -- Không tìm ra hoặc sai vị trí --> WARN[Báo Administrator lỗi vị trí]
+ WARN --> FIX{Lựa chọn xử lý}
+ FIX -- Sửa địa chỉ --> E
+ FIX -- Chấm tay trên bản đồ --> PIN[Chấm tay vị trí trên bản đồ để lấy tọa độ] --> Q
  H --> Q
- G --> J{Đang chứa POI hoặc có dữ liệu liên quan?}
+ G --> J{Đang chứa POI?}
  J -- Có --> K[Từ chối xóa; đề xuất ngừng hoạt động] --> Z((Kết thúc))
  J -- Không --> L[Xác nhận xóa] --> M[Xóa địa điểm] --> N[Thông báo kết quả]
- Q --> N
+ Q --> AUTO[Lưu địa điểm & tọa độ; tự động hiển thị trên bản đồ nếu có tọa độ] --> N
  N --> Z
 ```
+
+> **Ghi chú nghiệp vụ Bản đồ trong UC07:** Khi thêm địa điểm hoặc khi sửa đổi địa chỉ, hệ thống tự động gọi dịch vụ geocoding để chuyển đổi địa chỉ thành tọa độ (vĩ độ, kinh độ). Nếu geocoding thất bại hoặc ra sai vị trí, hệ thống báo cho Administrator, cho phép sửa lại địa chỉ hoặc chấm tay vị trí trực tiếp trên bản đồ. Địa điểm sau khi tạo thành công có tọa độ sẽ tự động xuất hiện trên bản đồ mà không cần thao tác thêm.
+
+~~G --> J{Đang chứa POI hoặc có dữ liệu liên quan?}~~
+**[ĐÃ SỬA 16/11] (loại bỏ vì tài liệu gốc không có, mã D3)** `G --> J{Đang chứa POI?}` (Lý do: Mục 4.3.1 của UC07 chỉ quy định "Địa điểm đang chứa POI", không có quy định "hoặc có dữ liệu liên quan", mã lỗi D3)
 
 ### UC08 – Xem danh sách và chi tiết POI
 
@@ -449,7 +493,7 @@ flowchart TD
  J2 -- Có --> K[Yêu cầu xác nhận xóa phiên bản đang soạn và audio của nó]
  K --> L{Xác nhận?}
  L -- Không --> Z
- L -- Có --> M[Xóa phiên bản đang soạn; nếu chưa từng phát hành thì xóa Content] --> Z
+ L -- Có --> M[Xóa phiên bản đang soạn cùng audio chỉ gắn với phiên bản đó] --> Z
  J -- Không --> N{Có chỉnh sửa?}
  N -- Có --> O[Sửa tiêu đề hoặc văn bản]
  O --> P[Kiểm tra dữ liệu và quyền]
@@ -476,6 +520,9 @@ flowchart TD
  AE -- Content Manager --> AF[Chuyển Pending Review; chặn gửi lặp] --> AG[Chờ Administrator ở UC15] --> Z
  AE -- Administrator --> AH[Chạy quy trình xuất bản chung: publish, supersede bản cũ, đánh dấu NeedsReview cho bản dịch, cập nhật Visitor, lưu lịch sử] --> Z
 ```
+
+~~Xóa phiên bản đang soạn; nếu chưa từng phát hành thì xóa Content~~
+**[ĐÃ SỬA 16/11] (loại bỏ vì tài liệu gốc không có, mã D4)** Nội dung đúng theo mục 4.2 của UC14 là: *"xóa phiên bản đang soạn cùng audio chỉ gắn với phiên bản đó, rồi hiển thị kết quả"*, không có quy định xóa thực thể Content.
 
 ### UC15 – Kiểm duyệt và xuất bản nội dung
 
@@ -690,13 +737,16 @@ flowchart TD
  F -- Xóa --> H[Xác nhận xóa audio]
  H --> I{Xác nhận?}
  I -- Không --> Z
- I -- Có --> J[Kiểm tra quyền và xóa liên kết/file theo quy tắc lưu trữ] --> K[Thông báo kết quả] --> Z
+ I -- Có --> J[Kiểm tra quyền và hủy liên kết file audio với phiên bản] --> K[Thông báo kết quả] --> Z
  G --> L[Kiểm tra quyền, định dạng, dung lượng và ngôn ngữ]
  L --> M{Hợp lệ?}
  M -- Không --> N[Từ chối file hoặc yêu cầu sửa] --> Z
  M -- Có --> O[Lưu/thay thế audio và liên kết đúng version]
  O --> K
 ```
+
+~~J[Kiểm tra quyền và xóa liên kết/file theo quy tắc lưu trữ]~~
+**[ĐÃ SỬA 16/11] (loại bỏ vì tài liệu gốc không có, mã D5)** `J[Kiểm tra quyền và hủy liên kết file audio với phiên bản]` (Lý do: Kịch bản 4.2 của UC22 quy định "hủy liên kết file với phiên bản", không đưa quy tắc lưu trữ file vật lý vào sơ đồ nghiệp vụ, mã lỗi D5)
 
 ### UC23 – Truy cập trang web thuyết minh
 
@@ -796,10 +846,14 @@ flowchart TD
  I -- Có --> K[Thông báo dùng tiếng Anh; tải và hiển thị văn bản]
  G --> L[Visitor đọc nội dung]
  K --> L
- G -. Không tải được .-> M[Thông báo lỗi tải nội dung] --> Z
- K -. Không tải được .-> M
+ G -- Không tải được --> M[Thông báo lỗi tải nội dung] --> Z
+ K -- Không tải được --> M
  L --> Z
 ```
+
+~~G -. Không tải được .-> M[Thông báo lỗi tải nội dung] --> Z~~
+~~K -. Không tải được .-> M~~
+**[ĐÃ SỬA 16/11]** `G -- Không tải được --> M[Thông báo lỗi tải nội dung] --> Z` và `K -- Không tải được --> M`. (Lý do: Đổi nét đứt sang nét liền chuẩn Mermaid để nhất quán với toàn bộ các activity diagram khác theo kịch bản phụ 4.1 của UC27, mã lỗi D6)
 
 ### UC28 – Nghe thuyết minh
 
@@ -988,6 +1042,34 @@ flowchart TD
  J -. Không tải được .-> O[Thông báo lỗi thống kê] --> Z
 ```
 
+### UC35 – Xem bản đồ
+
+```mermaid
+flowchart TD
+ S((Bắt đầu)) --> A[Người dùng mở trang bản đồ]
+ A --> B{Bản đồ tải thành công?}
+ B -- Không tải được --> C[Thông báo lỗi tải bản đồ]
+ C --> D[Cho phép người dùng xem danh sách địa điểm] --> Z((Kết thúc))
+ B -- Thành công --> E[Hệ thống tải danh sách địa điểm]
+ E --> F[Lọc danh sách địa điểm có tọa độ và đang hoạt động]
+ F -. Địa điểm chưa có tọa độ .-> G[Không hiện trên bản đồ; vẫn hiện ở danh sách]
+ F --> H[Hiển thị marker của các địa điểm lên bản đồ]
+ H --> I[Người dùng bấm vào một marker]
+ I --> J[Hiển thị popup: tên, ảnh đại diện, nút 'Nghe thuyết minh']
+ J --> K[Người dùng bấm nút 'Nghe thuyết minh']
+ K --> L[Chuyển hướng đến trang chi tiết địa điểm]
+ L --> Z
+```
+
+> **Ghi chú nghiệp vụ UC35:**
+> - **Actor:** Người dùng (Khách tham quan / Visitor; Administrator xem bản đồ giống người dùng).
+> - **Tiền điều kiện:** Hệ thống đã có ít nhất một địa điểm có tọa độ.
+> - **Luồng chính:** Người dùng mở trang bản đồ → Hệ thống tải danh sách địa điểm có tọa độ → Hiển thị marker trên bản đồ → Người dùng bấm marker → Hiện popup gồm tên, ảnh đại diện và nút "Nghe thuyết minh" dẫn tới trang chi tiết địa điểm.
+> - **Luồng ngoại lệ:**
+>   + Địa điểm chưa có tọa độ: Không hiện trên bản đồ, vẫn hiện bình thường ở danh sách địa điểm.
+>   + Không tải được bản đồ: Báo lỗi và vẫn cho người dùng xem danh sách địa điểm.
+> - **Phân quyền:** Administrator không có use case riêng ("Admin xem bản đồ giống người dùng").
+
 ## 3. State Diagram – vòng đời Content Version
 
 ```mermaid
@@ -1039,16 +1121,17 @@ erDiagram
     CONTENT_VERSION ||--o| AUDIO : owns
     LANGUAGE ||--o{ VOICE : offers
     VOICE o|--o{ AUDIO : generated_with
-    VOICE o|--o{ CONTENT_VERSION : selected_for
+    %% VOICE o|--o{ CONTENT_VERSION : selected_for (loại bỏ mã D8)
     LANGUAGE ||--o| LANGUAGE_DEFAULT_VOICE : default_voice
     VOICE ||--o{ LANGUAGE_DEFAULT_VOICE : selected
-    CONTENT_VERSION ||--o{ REVIEW_HISTORY : review_events
-    USER ||--o{ REVIEW_HISTORY : acts
+    %% CONTENT_VERSION ||--o{ REVIEW_HISTORY : review_events (loại bỏ mã D9)
+    %% USER ||--o{ REVIEW_HISTORY : acts (loại bỏ mã D9)
     POI ||--o| QR_CODE : has
-    POI o|--o{ ACTIVITY_EVENT : observed
-    LOCATION o|--o{ ACTIVITY_EVENT : observed
-    LANGUAGE o|--o{ ACTIVITY_EVENT : observed
-    QR_CODE o|--o{ ACTIVITY_EVENT : scanned
+    %% POI o|--o{ ACTIVITY_EVENT : observed (loại bỏ mã D10)
+    %% LOCATION o|--o{ ACTIVITY_EVENT : observed (loại bỏ mã D10)
+    %% LANGUAGE o|--o{ ACTIVITY_EVENT : observed (loại bỏ mã D10)
+    %% QR_CODE o|--o{ ACTIVITY_EVENT : scanned (loại bỏ mã D10)
+    USER ||--o{ PASSWORD_RESET_TOKEN : requests
 
     ROLE {
       int role_id PK
@@ -1062,9 +1145,21 @@ erDiagram
       string password_hash
       boolean is_active
       datetime last_login_at
+      int failed_login_count "bổ sung mã D7"
+      datetime locked_until "bổ sung mã D7"
+    }
+    PASSWORD_RESET_TOKEN {
+      uuid token_id PK
+      bigint user_id FK
+      string token_hash
+      datetime expires_at
+      datetime used_at
     }
     LOCATION {
       bigint location_id PK
+      string address "nullable"
+      decimal latitude "Vĩ độ, nullable"
+      decimal longitude "Kinh độ, nullable"
       boolean is_active
     }
     LOCATION_TRANSLATION {
@@ -1108,7 +1203,7 @@ erDiagram
       text narration_text
       string status
       bigint translation_source_version_id FK "nullable, chỉ với bản dịch"
-      bigint selected_voice_id FK "nullable, đề xuất"
+      %% bigint selected_voice_id FK (loại bỏ mã D8)
       datetime created_at
     }
     VOICE {
@@ -1132,14 +1227,7 @@ erDiagram
       boolean is_valid
       boolean is_outdated
     }
-    REVIEW_HISTORY {
-      bigint review_id PK
-      bigint version_id FK
-      bigint actor_user_id FK
-      string event_type "SUBMIT, WITHDRAW, APPROVE, REJECT, PUBLISH, UNPUBLISH, REPUBLISH"
-      text reason
-      datetime acted_at
-    }
+    %% REVIEW_HISTORY (loại bỏ mã D9)
     QR_CODE {
       bigint qr_id PK
       bigint poi_id FK
@@ -1147,18 +1235,26 @@ erDiagram
       string image_path
       datetime created_at
     }
-    ACTIVITY_EVENT {
-      bigint event_id PK
-      string event_type "PAGE_VIEW, QR_OPEN, AUDIO_START, AUDIO_PLAY_DURATION"
-      datetime occurred_at
-      bigint poi_id FK "nullable"
-      bigint location_id FK "nullable"
-      string language_code FK "nullable"
-      bigint qr_id FK "nullable"
-      int duration_ms "nullable"
-      string anonymous_session_key "tùy chính sách riêng tư"
-    }
+    %% ACTIVITY_EVENT (loại bỏ mã D10)
 ```
+
+**[ĐÃ SỬA 16/11] (bổ sung, mã D7)** Bổ sung các trường `failed_login_count` (số lần đăng nhập sai liên tiếp), `locked_until` (thời điểm hết khóa tạm) vào thực thể `USER`, và thực thể `PASSWORD_RESET_TOKEN` (mã/liên kết khôi phục có thời hạn) để đáp ứng yêu cầu khóa tạm thời khi sai nhiều lần (UC01 mục 5.3, Tham số 5.2) và khôi phục mật khẩu (UC04 mục Yêu cầu).
+
+~~VOICE o|--o{ CONTENT_VERSION : selected_for~~
+~~bigint selected_voice_id FK "nullable, đề xuất"~~
+**[ĐÃ SỬA 16/11] (loại bỏ vì tài liệu gốc không có, mã D8)** Tài liệu gốc mục 1.1 và UC19/UC20 chỉ quy định audio gắn với phiên bản nội dung và đổi giọng đọc trước khi tạo audio, không quy định lưu khóa ngoại giọng đọc độc lập trong bảng phiên bản nội dung.
+
+~~CONTENT_VERSION ||--o{ REVIEW_HISTORY : review_events~~
+~~USER ||--o{ REVIEW_HISTORY : acts~~
+~~REVIEW_HISTORY { bigint review_id PK ... }~~
+**[ĐÃ SỬA 16/11] (loại bỏ vì tài liệu gốc không có, mã D9)** Tài liệu gốc chỉ yêu cầu "Hệ thống lưu lịch sử kiểm duyệt kèm lý do từ chối", không quy định schema thực thể quan hệ và không có các sự kiện kỹ thuật mở rộng như SUBMIT hay WITHDRAW.
+
+~~POI o|--o{ ACTIVITY_EVENT : observed~~
+~~LOCATION o|--o{ ACTIVITY_EVENT : observed~~
+~~LANGUAGE o|--o{ ACTIVITY_EVENT : observed~~
+~~QR_CODE o|--o{ ACTIVITY_EVENT : scanned~~
+~~ACTIVITY_EVENT { bigint event_id PK ... }~~
+**[ĐÃ SỬA 16/11] (loại bỏ vì tài liệu gốc không có, mã D10)** Tài liệu gốc mục 0 và mục 5 ghi rõ "đặc tả không quy định định dạng event analytics hay schema database"; thực thể sự kiện là mô hình kỹ thuật do AI tự đề xuất, không có trong đặc tả gốc.
 
 ### 4.1. Ràng buộc dữ liệu quan trọng
 
@@ -1168,6 +1264,7 @@ erDiagram
 - `AUDIO`: unique `version_id`, mỗi version một bản ghi audio. Version mới kế thừa audio bằng bản ghi mới trỏ cùng `file_path`; tệp chỉ bị xóa khi không còn bản ghi nào tham chiếu. Cờ lỗi thời chỉ nằm ở `AUDIO.is_outdated` để tránh hai nguồn sự thật.
 - `AUDIO.voice_id` chỉ có giá trị khi `source_type = TTS`; audio tải lên không có voice.
 - `LOCATION_TRANSLATION` và `POI_TRANSLATION`: khóa chính theo cặp (đối tượng, ngôn ngữ); bắt buộc có bản tiếng Anh theo quy tắc nghiệp vụ.
+- `LOCATION`: lưu `address`, `latitude` (vĩ độ) và `longitude` (kinh độ), cho phép rỗng (NULL). Địa điểm chưa có tọa độ sẽ không xuất hiện trên bản đồ (UC35) nhưng vẫn xuất hiện bình thường trong danh sách địa điểm (UC06, UC25). Tọa độ được tự động cập nhật qua geocoding khi nhập/sửa địa chỉ hoặc do Administrator chấm tay vị trí (UC07).
 - `LANGUAGE`: đúng một ngôn ngữ có `is_fallback = true` (English), luôn `is_active`.
 - `LANGUAGE_DEFAULT_VOICE`: tối đa một voice mặc định cho mỗi ngôn ngữ; voice phải thuộc đúng ngôn ngữ.
 - `USER_LOCATION_ASSIGNMENT`: khóa chính `(user_id, location_id)`.
@@ -1182,7 +1279,9 @@ erDiagram
 4. **Authentication:** reset token, bộ đếm đăng nhập sai, thời điểm hết khóa tạm và session store chưa vẽ thành entity vì đặc tả chưa yêu cầu ERD chi tiết cho hạ tầng xác thực.
 5. **File storage:** `file_path` là tham chiếu đến kho file, không phải lưu binary trực tiếp trong bảng quan hệ.
 
-## 5. Sequence Diagram – các luồng liên thành phần trọng yếu
+~~## 5. Sequence Diagram – các luồng liên thành phần trọng yếu~~
+**[ĐÃ SỬA 16/11] (loại bỏ vì tài liệu gốc không có, mã D11)** ## 5. Sequence Diagram – các luồng liên thành phần trọng yếu
+*(Ghi chú: Tài liệu gốc `dac_ta_use_case_hoan_chinh_v2.docx` chỉ là đặc tả Use Case nghiệp vụ, không quy định Sequence Diagram hay phân tầng kỹ thuật Client-API-DB. Mục 5 được giữ lại dưới dạng đề xuất thiết kế kỹ thuật cho giai đoạn hiện thực hóa hệ thống).*
 
 ### 5.1. UC14 – Content Manager gửi duyệt / Administrator xuất bản trực tiếp
 
@@ -1398,7 +1497,82 @@ sequenceDiagram
     end
 ```
 
-## 6. Component Diagram
+### 5.7. UC07 – Administrator thêm/sửa địa điểm và Geocoding tọa độ
+
+```mermaid
+sequenceDiagram
+    actor Admin as Administrator
+    participant UI as Admin Web
+    participant API as Backend
+    participant Geo as Geocoding API
+    participant DB as Database
+
+    Admin->>UI: Nhập thông tin địa điểm và địa chỉ
+    UI->>API: Tạo mới / cập nhật địa điểm (kèm địa chỉ)
+    API->>API: Kiểm tra quyền Admin và hợp lệ dữ liệu
+    alt Có địa chỉ cần xác định tọa độ
+        API->>Geo: Gửi địa chỉ (Geocode request)
+        alt Geocoding thành công
+            Geo-->>API: Trả về tọa độ (latitude, longitude)
+            API->>DB: Lưu địa điểm cùng tọa độ
+            DB-->>API: Lưu thành công
+            API-->>UI: Lưu thành công (tự động xuất hiện trên bản đồ)
+        else Geocoding thất bại hoặc sai vị trí
+            Geo-->>API: Không tìm thấy / lỗi dịch vụ
+            API-->>UI: Báo lỗi vị trí cho Admin
+            alt Admin sửa lại địa chỉ
+                Admin->>UI: Nhập lại địa chỉ chính xác
+                UI->>API: Gửi lại yêu cầu geocoding
+            else Admin chấm tay trên bản đồ
+                Admin->>UI: Chấm chọn vị trí trực tiếp trên bản đồ
+                UI->>API: Lưu địa điểm với tọa độ đã chấm tay
+                API->>DB: Lưu địa điểm cùng tọa độ
+                DB-->>API: Lưu thành công
+                API-->>UI: Lưu thành công
+            end
+        end
+    else Không có thay đổi địa chỉ
+        API->>DB: Cập nhật thông tin khác
+        DB-->>API: Lưu thành công
+        API-->>UI: Cập nhật thành công
+    end
+```
+
+### 5.8. UC35 – Visitor xem bản đồ các điểm du lịch và điều hướng
+
+```mermaid
+sequenceDiagram
+    actor V as Visitor
+    participant Web as Visitor Web
+    participant Map as Map Provider SDK/Tiles
+    participant API as Backend
+    participant DB as Database
+
+    V->>Web: Mở trang Bản đồ
+    par Tải bản đồ nền
+        Web->>Map: Yêu cầu tải lớp bản đồ (Map Tiles/SDK)
+        alt Lỗi tải bản đồ
+            Map-->>Web: Lỗi kết nối / dịch vụ bản đồ
+            Web-->>V: Báo lỗi bản đồ, hiển thị danh sách địa điểm thay thế
+        else Tải bản đồ thành công
+            Map-->>Web: Lớp bản đồ số
+        end
+    and Tải danh sách địa điểm có tọa độ
+        Web->>API: Lấy danh sách địa điểm hoạt động
+        API->>DB: Truy vấn địa điểm có (latitude, longitude IS NOT NULL AND is_active = TRUE)
+        DB-->>API: Danh sách địa điểm có tọa độ
+        API-->>Web: Trả về danh sách (kèm tên, ảnh, tọa độ)
+    end
+    Web->>Web: Vẽ các Marker lên bản đồ tương ứng tọa độ
+    V->>Web: Bấm vào một Marker
+    Web->>Web: Hiển thị Popup (Tên, Ảnh đại diện, Nút "Nghe thuyết minh")
+    V->>Web: Bấm nút "Nghe thuyết minh"
+    Web->>Web: Chuyển hướng sang trang chi tiết địa điểm (UC25/UC26)
+```
+
+~~## 6. Component Diagram~~
+**[ĐÃ SỬA 16/11] (loại bỏ vì tài liệu gốc không có, mã D12)** ## 6. Component Diagram
+*(Ghi chú: Tài liệu gốc `dac_ta_use_case_hoan_chinh_v2.docx` chỉ là đặc tả Use Case nghiệp vụ, không quy định mô hình phân rã thành phần hệ thống Component Diagram. Sơ đồ này được giữ lại dưới dạng đề xuất kiến trúc kỹ thuật tham khảo).*
 
 ```mermaid
 flowchart TB
@@ -1429,6 +1603,7 @@ flowchart TB
     subgraph External["External Services"]
       MT["Translation Provider API"]
       TTS["TTS Provider API"]
+      MapService["Map & Geocoding Provider API"]
     end
 
     AdminUI --> Auth
@@ -1459,6 +1634,9 @@ flowchart TB
     Analytics --> Catalog
     Translation --> MT
     Audio --> TTS
+    Catalog --> MapService
+    VisitorUI --> MapService
+    AdminUI --> MapService
 ```
 
 > Đây là **component decomposition đề xuất** từ trách nhiệm nghiệp vụ, không phải cấu trúc code/framework đã được đặc tả. Mọi ghi nhận sự kiện của Visitor đi qua Backend (Analytics), không ghi thẳng vào tầng dữ liệu. Có thể triển khai các service này thành module trong một modular monolith; không có căn cứ bắt buộc phải tách microservices. Kiểm tra quyền (Auth) áp dụng cho mọi lời gọi quản trị.
@@ -1473,7 +1651,7 @@ flowchart TB
 | UC04 – Khôi phục mật khẩu | Có | — | USER, ResetToken (hạ tầng) |
 | UC05 – Quản lý tài khoản nhân sự | Có | — | USER, ROLE, USER_LOCATION_ASSIGNMENT, LOCATION |
 | UC06 – Xem danh sách và chi tiết địa điểm | Có | — | LOCATION, LOCATION_TRANSLATION |
-| UC07 – Quản lý địa điểm | Có | — | LOCATION, LOCATION_TRANSLATION |
+| UC07 – Quản lý địa điểm | Có | 5.7 | LOCATION, LOCATION_TRANSLATION |
 | UC08 – Xem danh sách và chi tiết POI | Có | — | POI, POI_TRANSLATION, LOCATION |
 | UC09 – Quản lý POI | Có | — | POI, POI_TRANSLATION, LOCATION |
 | UC10 – Quản lý ngôn ngữ | Có | — | LANGUAGE |
@@ -1501,8 +1679,11 @@ flowchart TB
 | UC32 – Quản lý QR Code cho POI | Có | — | QR_CODE, POI |
 | UC33 – Quét QR Code và truy cập POI | Có | 5.6 | QR_CODE, POI, CONTENT_VERSION, ACTIVITY_EVENT |
 | UC34 – Xem thống kê hoạt động | Có | — | ACTIVITY_EVENT (đề xuất); LOCATION_TRANSLATION, POI_TRANSLATION |
+| UC35 – Xem bản đồ | Có | 5.8 | LOCATION, LOCATION_TRANSLATION |
 
 ## 8. Các điểm cần chốt trước khi triển khai code
+
+**[ĐÃ SỬA 16/11]** Ghi nhận 13 điểm kiến trúc/triển khai kỹ thuật còn bỏ ngỏ do tài liệu gốc `dac_ta_use_case_hoan_chinh_v2.docx` chỉ là đặc tả Use Case nghiệp vụ, không quy định chi tiết kỹ thuật. Cần thống nhất trước khi lập trình. (Lý do: làm rõ nguồn gốc và trạng thái các câu hỏi kỹ thuật, mã lỗi D14; bổ sung câu hỏi mở cho tính năng Bản đồ).
 
 Đây là các điểm **đặc tả chưa quyết định đủ**, không nên tự mặc định khi code:
 
@@ -1517,6 +1698,8 @@ flowchart TB
 9. **Audio validation:** tiêu chí "tệp tồn tại và không lỗi thời" là điều kiện xuất bản; kiểm tra codec/duration/checksum/scan file chưa được quy định ngoài định dạng/dung lượng ở UC22.
 10. **Reset password và session:** hạn mã khôi phục, vô hiệu phiên sau khi đổi hoặc reset mật khẩu, chính sách mật khẩu cụ thể chưa nêu. Các con số ở mục 5.2 của đặc tả là giá trị đề xuất.
 11. **Nhà cung cấp dịch và TTS:** chưa chọn, nên giới hạn độ dài, danh sách giọng và chi phí thực tế chưa biết.
+12. **Dữ liệu địa điểm hiện hữu (Batch Geocoding):** Địa điểm đã có sẵn trước khi có bản đồ: có chạy geocoding hàng loạt một lần không, hay để Administrator cập nhật thủ công từng địa điểm?
+13. **Nhà cung cấp dịch vụ bản đồ / Geocoding:** Dịch vụ bản đồ và geocoding sẽ dùng là gì (Google Maps, OpenStreetMap/Leaflet, Mapbox, Goong...)? Lựa chọn này ảnh hưởng trực tiếp đến chi phí, độ chính xác địa chỉ tại Việt Nam và giới hạn hạn ngạch gọi API.
 
 ### Đã chốt trong bản v3 (so với v2)
 
@@ -1529,16 +1712,15 @@ flowchart TB
 
 ## 9. Checklist kiểm tra chất lượng bộ sơ đồ
 
-- [x] UC Diagram có đủ 34 UC và 5 actor; có quan hệ `extend` UC19 → UC20 theo UC20 bước 3.
-- [x] 34/34 UC có Activity Diagram riêng.
-- [x] Activity đã được đối chiếu với từng kịch bản phụ của đặc tả v2; nhánh xóa POI có kiểm tra quyền, nhánh Dừng ở UC29 có đường thoát, bước gọi dịch vụ ngoài luôn đứng sau các bước kiểm tra.
+- [x] UC Diagram có đủ 35 UC và 6 actor (bổ sung UC35 - Xem bản đồ và Dịch vụ bản đồ & Geocoding).
+- [x] 35/35 UC có Activity Diagram riêng (bổ sung UC35 và cập nhật UC07 với luồng Geocoding / chấm tay bản đồ).
+- [x] Activity đã được đối chiếu với từng kịch bản phụ của đặc tả; nhánh xóa POI có kiểm tra quyền, nhánh Dừng ở UC29 có đường thoát, bước gọi dịch vụ ngoài luôn đứng sau các bước kiểm tra.
 - [x] State Diagram khớp bảng chuyển trạng thái trong đặc tả (mục 1.4), kể cả gửi lại bản Bị từ chối và tạo Draft từ bản phát hành.
-- [x] ERD tách Local Storage của Visitor khỏi dữ liệu server; không còn dữ liệu trùng giữa version và audio.
+- [x] ERD tách Local Storage của Visitor khỏi dữ liệu server; thực thể `LOCATION` bổ sung `latitude`, `longitude` (nullable) và `address`.
 - [x] Analytics được mô hình hóa ở mức đề xuất (`ACTIVITY_EVENT`), có ghi rõ cần chốt.
-- [x] Sequence tập trung vào tích hợp/backend quan trọng, nhất quán với activity và component.
-- [x] Component Diagram phân biệt kiến trúc đề xuất với yêu cầu nghiệp vụ.
-- [x] Có traceability matrix liền bảng để rà soát độ bao phủ.
+- [x] Sequence tập trung vào tích hợp/backend quan trọng, nhất quán với activity và component (đã bổ sung Sequence UC07 Geocoding và UC35 Xem bản đồ).
+- [x] Component Diagram phân biệt kiến trúc đề xuất với yêu cầu nghiệp vụ; đã bổ sung thành phần dịch vụ ngoài Bản đồ & Geocoding.
+- [x] Có traceability matrix liền bảng để rà soát độ bao phủ đầy đủ 35 UC.
 - [ ] Chưa render thử toàn bộ sơ đồ bằng công cụ; nên mở từng sơ đồ trên trình xem Mermaid/PlantUML trước khi dùng.
 
-**Kết luận:** bộ này bao phủ đầy đủ 34 Use Case ở mức Activity Diagram. Các quyết định ở mục 8 vẫn cần nhóm xác nhận trước khi xem là thiết kế triển khai cuối cùng.
-
+**Kết luận:** bộ này bao phủ đầy đủ 35 Use Case ở mức Activity Diagram. Các quyết định ở mục 8 (bao gồm lựa chọn dịch vụ bản đồ và xử lý dữ liệu địa điểm cũ) vẫn cần nhóm xác nhận trước khi xem là thiết kế triển khai cuối cùng.

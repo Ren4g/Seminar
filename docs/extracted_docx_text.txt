@@ -1,0 +1,1525 @@
+ĐẶC TẢ USE CASE
+Hệ thống thuyết minh tự động đa ngôn ngữ cho điểm du lịch
+1. Quy ước chung
+1.1. Thuật ngữ
+Thuật ngữ
+Định nghĩa
+Địa điểm
+Khu du lịch hoặc di tích, là đơn vị chứa nhiều POI. Có tên và mô tả ngắn theo từng ngôn ngữ.
+POI
+Điểm thuyết minh cụ thể trong một địa điểm, có tên và mô tả ngắn theo từng ngôn ngữ, nội dung thuyết minh và QR Code riêng.
+Ngôn ngữ dự phòng
+Tiếng Anh, cố định cho toàn hệ thống. Khi nội dung, audio, tên hoặc mô tả không có ở ngôn ngữ Visitor chọn, hệ thống tự động dùng tiếng Anh. Hệ thống không hỗ trợ ngôn ngữ hiếm: chỉ các ngôn ngữ mà cả dịch vụ dịch và TTS đều hỗ trợ.
+Nội dung thuyết minh
+Nội dung của một POI bằng một ngôn ngữ. Mỗi cặp (POI, ngôn ngữ) chỉ có một nội dung, nội dung có thể có nhiều phiên bản.
+Phiên bản
+Một lần lưu của nội dung, có văn bản, trạng thái và tối đa một audio gắn kèm.
+Phiên bản hiện tại
+Phiên bản đang soạn (Bản nháp, Chờ duyệt, Bị từ chối) nếu có; nếu không thì phiên bản đã phát hành (Đã xuất bản hoặc Đã gỡ).
+Giọng đọc mặc định
+Giọng đọc Administrator đặt cho mỗi ngôn ngữ (UC11), tự áp dụng khi tạo audio. Người dùng có thể đổi giọng cho từng nội dung (UC19).
+Audio
+Tệp giọng đọc gắn với một phiên bản, tạo bằng dịch vụ TTS hoặc tải lên thu sẵn. Mỗi phiên bản có bản ghi audio riêng; phiên bản mới kế thừa audio bằng bản ghi mới trỏ cùng tệp, và tệp chỉ bị xóa khi không còn bản ghi nào dùng.
+Audio lỗi thời
+Audio được tạo từ văn bản khác với văn bản hiện tại của chính phiên bản đó.
+Dấu Cần rà soát
+Cờ cảnh báo gắn với nội dung bản dịch: bản dịch tự động mới tạo, hoặc bản nguồn đã đổi văn bản. Không phải trạng thái; không ảnh hưởng bản đang hiển thị cho Visitor nhưng chặn việc gửi duyệt và xuất bản cho đến khi được rà soát (UC18).
+Phạm vi phân công
+Danh sách địa điểm Administrator giao cho một Content Manager. Content Manager quản lý mọi POI, nội dung, audio và QR Code thuộc các địa điểm này.
+1.2. Tác nhân
+Tác nhân
+Vai trò
+Xác thực
+Administrator
+Quản trị toàn hệ thống: tài khoản, địa điểm, ngôn ngữ, kiểm duyệt và xuất bản, thống kê.
+Bắt buộc đăng nhập
+Content Manager
+Soạn nội dung, dịch, tạo audio và QR Code trong phạm vi được phân công.
+Bắt buộc đăng nhập
+Visitor
+Khách tham quan, dùng trang web trên trình duyệt để xem và nghe thuyết minh. Không có tài khoản, không cài đặt ứng dụng.
+Không đăng nhập
+Dịch vụ dịch tự động
+Tác nhân phụ (hệ thống ngoài), trả bản dịch cho UC17.
+Tích hợp API
+Dịch vụ TTS
+Tác nhân phụ (hệ thống ngoài), tạo audio cho UC20.
+Tích hợp API
+Dịch vụ bản đồ và Geocoding
+Tác nhân phụ (hệ thống ngoài), chuyển đổi địa chỉ thành tọa độ địa lý (geocoding) cho UC07 và cung cấp lớp bản đồ số cho UC35.
+Tích hợp API/SDK
+1.3. Trạng thái phiên bản nội dung
+Trạng thái
+Ý nghĩa
+Visitor thấy
+Bản nháp
+Đang soạn, chưa gửi duyệt. Được sửa, được tạo audio.
+Không
+Chờ duyệt
+Content Manager đã gửi, chờ Administrator. Không được sửa.
+Không
+Bị từ chối
+Administrator từ chối kèm lý do. Sửa và lưu thì về Bản nháp; cũng có thể gửi duyệt lại ngay.
+Không
+Đã xuất bản
+Phiên bản đang hiển thị. Mỗi nội dung có tối đa một phiên bản Đã xuất bản.
+Có
+Đã gỡ
+Phiên bản đã xuất bản bị Administrator gỡ, vẫn được lưu lại.
+Không
+Đã thay thế
+Phiên bản xuất bản cũ, bị thay khi phiên bản mới được xuất bản. Chỉ để tra cứu lịch sử.
+Không
+Quy tắc về phiên bản
+Mỗi nội dung có tối đa một phiên bản đang soạn (Bản nháp, Chờ duyệt hoặc Bị từ chối) và tối đa một phiên bản đã phát hành (Đã xuất bản hoặc Đã gỡ) tại một thời điểm.
+Phiên bản Chờ duyệt và Đã xuất bản không được sửa. Muốn thay đổi phải tạo phiên bản mới (UC14).
+Audio gắn với phiên bản. Phiên bản đang xuất bản luôn phát audio của chính nó, kể cả khi đã có phiên bản mới đang soạn.
+Chỉ phiên bản Bản nháp hoặc Bị từ chối được gửi duyệt hoặc xuất bản trực tiếp.
+Điều kiện xuất bản
+Một phiên bản chỉ được gửi duyệt hoặc xuất bản khi thỏa đồng thời các điều kiện sau. Hệ thống kiểm tra lại khi Administrator phê duyệt, xuất bản trực tiếp hoặc xuất bản lại.
+POI và địa điểm chứa POI đang hoạt động.
+Ngôn ngữ của nội dung đang hoạt động.
+Tiêu đề và văn bản thuyết minh không rỗng.
+Có audio hợp lệ gắn đúng phiên bản (tệp tồn tại và không lỗi thời).
+Nội dung không còn dấu Cần rà soát.
+1.4. Chuyển trạng thái và quy trình xuất bản
+Từ
+Sự kiện
+Đến
+Thực hiện
+UC
+(mới)
+Tạo nội dung
+Bản nháp
+Administrator, Content Manager
+UC13
+Bản nháp
+Gửi duyệt
+Chờ duyệt
+Content Manager
+UC14
+Bản nháp
+Xuất bản trực tiếp
+Đã xuất bản
+Administrator
+UC14
+Chờ duyệt
+Thu hồi
+Bản nháp
+Content Manager
+UC14
+Chờ duyệt
+Phê duyệt (xuất bản ngay)
+Đã xuất bản
+Administrator
+UC15
+Chờ duyệt
+Từ chối kèm lý do
+Bị từ chối
+Administrator
+UC15
+Bị từ chối
+Sửa và lưu
+Bản nháp
+Administrator, Content Manager
+UC14
+Bị từ chối
+Gửi duyệt lại
+Chờ duyệt
+Content Manager
+UC14
+Bị từ chối
+Xuất bản trực tiếp
+Đã xuất bản
+Administrator
+UC14
+(mới, từ bản phát hành)
+Sửa nội dung đã xuất bản hoặc đã gỡ; dịch lại
+Bản nháp
+Administrator, Content Manager
+UC14, UC17
+Đã xuất bản
+Gỡ xuất bản
+Đã gỡ
+Administrator
+UC16
+Đã gỡ
+Xuất bản lại
+Đã xuất bản
+Administrator
+UC16
+Đã xuất bản, Đã gỡ
+Phiên bản mới của nội dung được xuất bản
+Đã thay thế
+Hệ thống
+UC14, UC15
+Bản nháp, Bị từ chối
+Xóa bản nháp
+(xóa)
+Administrator, Content Manager
+UC14
+Quy trình xuất bản (dùng chung cho UC14, UC15 và UC16)
+Hệ thống kiểm tra điều kiện xuất bản.
+Hệ thống chuyển phiên bản sang Đã xuất bản.
+Phiên bản đã phát hành trước đó của cùng nội dung (Đã xuất bản hoặc Đã gỡ), nếu có, chuyển sang Đã thay thế.
+Nếu văn bản thuyết minh khác phiên bản trước, hệ thống gắn dấu Cần rà soát cho các bản dịch được dịch từ nội dung này. Các bản dịch đang xuất bản vẫn hiển thị bình thường.
+Hệ thống cập nhật văn bản và audio hiển thị cho Visitor.
+Hệ thống lưu lịch sử.
+1.5. Dịch vụ bên ngoài
+Dịch tự động và TTS do dịch vụ bên ngoài cung cấp qua API. Nhà cung cấp chưa được chọn; đặc tả không phụ thuộc nhà cung cấp cụ thể.
+Hệ thống chỉ hỗ trợ các ngôn ngữ mà cả hai dịch vụ cùng hỗ trợ. Không hỗ trợ ngôn ngữ hiếm; ngôn ngữ nào thiếu nội dung thì dùng tiếng Anh.
+Dịch vụ có thể lỗi, chậm hoặc giới hạn độ dài văn bản. UC17 và UC20 đã có kịch bản phụ cho các trường hợp này.
+Chi phí thường tính theo số ký tự, nên dịch và tạo audio do người dùng chủ động yêu cầu, không chạy tự động mỗi lần sửa.
+Kết quả dịch và audio chỉ được dùng cho Visitor sau khi qua quy trình nội dung (rà soát, duyệt, xuất bản).
+2. Đặc tả Use Case
+2.0. Danh mục Use Case
+Mã UC
+Tên Use Case
+Actor
+UC01
+Đăng nhập
+Administrator, Content Manager
+UC02
+Đăng xuất
+Administrator, Content Manager
+UC03
+Đổi mật khẩu
+Administrator, Content Manager
+UC04
+Khôi phục mật khẩu
+Administrator, Content Manager
+UC05
+Quản lý tài khoản nhân sự
+Administrator
+UC06
+Xem danh sách và chi tiết địa điểm
+Administrator, Content Manager
+UC07
+Quản lý địa điểm
+Administrator
+UC08
+Xem danh sách và chi tiết POI
+Administrator, Content Manager
+UC09
+Quản lý POI
+Administrator, Content Manager
+UC10
+Quản lý ngôn ngữ
+Administrator
+UC11
+Thiết lập giọng đọc mặc định theo ngôn ngữ
+Administrator
+UC12
+Xem danh sách và chi tiết nội dung thuyết minh
+Administrator, Content Manager
+UC13
+Tạo nội dung thuyết minh
+Administrator, Content Manager
+UC14
+Cập nhật và gửi duyệt nội dung thuyết minh
+Administrator, Content Manager
+UC15
+Kiểm duyệt và xuất bản nội dung
+Administrator
+UC16
+Gỡ xuất bản và xuất bản lại nội dung
+Administrator
+UC17
+Yêu cầu dịch tự động
+Administrator, Content Manager, Dịch vụ dịch tự động
+UC18
+Rà soát và chỉnh sửa bản dịch
+Administrator, Content Manager
+UC19
+Chọn giọng đọc
+Administrator, Content Manager
+UC20
+Yêu cầu tạo audio TTS
+Administrator, Content Manager, Dịch vụ TTS
+UC21
+Nghe thử audio
+Administrator, Content Manager
+UC22
+Quản lý audio
+Administrator, Content Manager
+UC23
+Truy cập trang web thuyết minh
+Visitor
+UC24
+Chọn ngôn ngữ sử dụng
+Visitor
+UC25
+Duyệt và chọn địa điểm tham quan
+Visitor
+UC26
+Xem danh sách POI
+Visitor
+UC27
+Xem nội dung thuyết minh
+Visitor
+UC28
+Nghe thuyết minh
+Visitor
+UC29
+Điều khiển trình phát audio
+Visitor
+UC30
+Chuyển ngôn ngữ thuyết minh
+Visitor
+UC31
+Xem lịch sử nghe trên thiết bị
+Visitor
+UC32
+Quản lý QR Code cho POI
+Administrator, Content Manager
+UC33
+Quét QR Code và truy cập POI
+Visitor
+UC34
+Xem thống kê hoạt động
+Administrator
+UC35
+Xem bản đồ
+Visitor
+Nhóm 1 – Tài khoản và xác thực
+UC01 – Đăng nhập
+Use Case ID
+UC01
+Tên Use Case
+Đăng nhập
+Tác nhân
+Administrator, Content Manager
+Mô tả chức năng
+Cho phép nhân viên đăng nhập vào hệ thống quản trị bằng tài khoản được Administrator cấp.
+Điều kiện tiên quyết
+Người dùng đã có tài khoản trong hệ thống.
+Tài khoản đang hoạt động.
+Yêu cầu
+Xác thực chính xác thông tin đăng nhập.
+Phân quyền theo vai trò Administrator hoặc Content Manager.
+Ghi nhận thời gian đăng nhập.
+Khóa tạm thời tài khoản sau một số lần đăng nhập sai liên tiếp (số lần và thời gian khóa do cấu hình).
+Thông báo lỗi xác thực không tiết lộ tài khoản có tồn tại hay không.
+Kịch bản chính
+1.	Người dùng truy cập trang đăng nhập.
+2.	Hệ thống hiển thị biểu mẫu đăng nhập.
+3.	Người dùng nhập tên đăng nhập và mật khẩu.
+4.	Người dùng nhấn nút Đăng nhập.
+5.	Hệ thống kiểm tra thông tin đăng nhập.
+6.	Hệ thống xác định vai trò và quyền hạn của người dùng.
+7.	Hệ thống tạo phiên đăng nhập.
+8.	Hệ thống chuyển người dùng đến trang quản trị tương ứng.
+Kịch bản phụ
+3.1.	Người dùng bỏ trống thông tin: Hệ thống yêu cầu nhập đầy đủ.
+5.1.	Tên đăng nhập hoặc mật khẩu không chính xác (kể cả khi tài khoản không tồn tại): Hệ thống hiển thị một thông báo chung, không cho biết thông tin nào sai.
+5.2.	Tài khoản bị khóa: Hệ thống thông báo tài khoản không thể đăng nhập.
+5.3.	Đăng nhập sai liên tiếp quá số lần quy định: Hệ thống khóa tạm thời tài khoản và thông báo thời gian có thể thử lại.
+UC02 – Đăng xuất
+Use Case ID
+UC02
+Tên Use Case
+Đăng xuất
+Tác nhân
+Administrator, Content Manager
+Mô tả chức năng
+Cho phép người dùng kết thúc phiên làm việc và thoát khỏi hệ thống quản trị.
+Điều kiện tiên quyết
+Người dùng đã đăng nhập thành công.
+Yêu cầu
+Hủy phiên đăng nhập và không cho phép tiếp tục truy cập bằng phiên đã đăng xuất.
+Kịch bản chính
+1.	Người dùng chọn chức năng Đăng xuất.
+2.	Hệ thống hiển thị yêu cầu xác nhận đăng xuất (nếu được cấu hình).
+3.	Người dùng xác nhận đăng xuất.
+4.	Hệ thống hủy phiên đăng nhập.
+5.	Hệ thống chuyển người dùng về trang đăng nhập.
+Kịch bản phụ
+1.1.	Phiên đăng nhập đã hết hạn khi người dùng thao tác: Hệ thống tự động chuyển về trang đăng nhập.
+3.1.	Người dùng hủy thao tác: Hệ thống giữ nguyên phiên đăng nhập.
+UC03 – Đổi mật khẩu
+Use Case ID
+UC03
+Tên Use Case
+Đổi mật khẩu
+Tác nhân
+Administrator, Content Manager
+Mô tả chức năng
+Cho phép người dùng thay đổi mật khẩu của tài khoản đang đăng nhập.
+Điều kiện tiên quyết
+Người dùng đã đăng nhập.
+Yêu cầu
+Phải xác nhận mật khẩu hiện tại.
+Mật khẩu mới phải đáp ứng chính sách bảo mật.
+Mật khẩu mới và xác nhận mật khẩu phải trùng nhau.
+Kịch bản chính
+1.	Người dùng truy cập chức năng Đổi mật khẩu.
+2.	Hệ thống hiển thị biểu mẫu đổi mật khẩu.
+3.	Người dùng nhập mật khẩu hiện tại.
+4.	Người dùng nhập mật khẩu mới.
+5.	Người dùng xác nhận mật khẩu mới.
+6.	Người dùng gửi yêu cầu đổi mật khẩu.
+7.	Hệ thống kiểm tra mật khẩu hiện tại.
+8.	Hệ thống kiểm tra tính hợp lệ của mật khẩu mới.
+9.	Hệ thống cập nhật mật khẩu.
+10.	Hệ thống thông báo đổi mật khẩu thành công.
+Kịch bản phụ
+5.1.	Mật khẩu xác nhận không trùng khớp: Hệ thống thông báo lỗi.
+7.1.	Mật khẩu hiện tại không chính xác: Hệ thống từ chối yêu cầu.
+8.1.	Mật khẩu mới không đáp ứng chính sách: Hệ thống yêu cầu nhập lại.
+UC04 – Khôi phục mật khẩu
+Use Case ID
+UC04
+Tên Use Case
+Khôi phục mật khẩu
+Tác nhân
+Administrator, Content Manager
+Mô tả chức năng
+Cho phép người dùng lấy lại quyền truy cập khi quên mật khẩu thông qua email đã đăng ký.
+Điều kiện tiên quyết
+Tài khoản đã tồn tại và có email hợp lệ.
+Yêu cầu
+Hệ thống gửi liên kết hoặc mã xác thực qua email.
+Mã hoặc liên kết khôi phục phải có thời hạn.
+Không tiết lộ mật khẩu cũ.
+Thông báo kết quả không tiết lộ email có tồn tại trong hệ thống hay không.
+Kịch bản chính
+1.	Người dùng truy cập chức năng Quên mật khẩu.
+2.	Hệ thống hiển thị biểu mẫu nhập email.
+3.	Người dùng nhập email tài khoản.
+4.	Người dùng gửi yêu cầu khôi phục.
+5.	Hệ thống kiểm tra email.
+6.	Hệ thống gửi mã hoặc liên kết khôi phục mật khẩu.
+7.	Người dùng truy cập liên kết hoặc nhập mã xác thực.
+8.	Hệ thống xác thực yêu cầu.
+9.	Người dùng nhập mật khẩu mới và xác nhận mật khẩu.
+10.	Hệ thống cập nhật mật khẩu.
+11.	Hệ thống thông báo khôi phục thành công.
+Kịch bản phụ
+5.1.	Email không tồn tại: Hệ thống không gửi email và vẫn hiển thị thông báo chung như trường hợp hợp lệ, không tiết lộ email có tồn tại hay không.
+7.1.	Mã xác thực không chính xác: Hệ thống yêu cầu nhập lại.
+7.2.	Mã hoặc liên kết đã hết hạn: Hệ thống yêu cầu gửi lại yêu cầu khôi phục.
+9.1.	Mật khẩu mới không hợp lệ: Hệ thống yêu cầu nhập lại.
+UC05 – Quản lý tài khoản nhân sự
+Use Case ID
+UC05
+Tên Use Case
+Quản lý tài khoản nhân sự
+Tác nhân
+Administrator
+Mô tả chức năng
+Cho phép Administrator tạo, cập nhật, khóa, mở khóa tài khoản, đặt lại mật khẩu, gán vai trò và phân công phạm vi địa điểm cho Content Manager.
+Điều kiện tiên quyết
+Administrator đã đăng nhập.
+Yêu cầu
+Chỉ Administrator được quản lý tài khoản nhân sự.
+Mỗi tài khoản có thông tin đăng nhập duy nhất.
+Content Manager phải được phân công ít nhất một địa điểm; phạm vi này quyết định các POI, nội dung, audio và QR Code mà Content Manager được thao tác.
+Khi tạo tài khoản Content Manager hoặc đổi vai trò sang Content Manager, phải phân công ít nhất một địa điểm trong cùng thao tác.
+Kịch bản chính
+1.	Administrator truy cập chức năng Quản lý tài khoản nhân sự.
+2.	Hệ thống hiển thị danh sách tài khoản.
+3.	Administrator chọn một thao tác quản lý.
+4.	Administrator thực hiện một trong các thao tác:
+4.1. Tạo tài khoản mới (chọn vai trò; nếu là Content Manager thì chọn ít nhất một địa điểm).
+4.2. Cập nhật thông tin tài khoản.
+4.3. Khóa hoặc mở khóa tài khoản.
+4.4. Đặt lại mật khẩu.
+4.5. Gán vai trò Administrator hoặc Content Manager.
+4.6. Phân công hoặc thay đổi phạm vi địa điểm cho Content Manager.
+5.	Administrator xác nhận thao tác.
+6.	Hệ thống kiểm tra tính hợp lệ của dữ liệu.
+7.	Hệ thống lưu thông tin thay đổi.
+8.	Hệ thống thông báo kết quả.
+Kịch bản phụ
+4.1.1.Geocoding không tìm ra hoặc ra sai vị trí: Hệ thống thông báo cho Administrator, cho phép sửa lại địa chỉ hoặc chấm tay vị trí trên bản đồ để xác định tọa độ (khi sửa địa chỉ ở 4.2 áp dụng cùng luồng này).4.1.Email hoặc tên đăng nhập đã tồn tại: Hệ thống thông báo lỗi.
+4.1.2.	Tạo Content Manager mà chưa chọn địa điểm: Hệ thống yêu cầu phân công.
+4.5.1.	Đổi vai trò sang Content Manager mà chưa phân công địa điểm: Hệ thống yêu cầu phân công.
+4.5.2.	Đổi vai trò từ Content Manager sang Administrator: Hệ thống giữ lại phạm vi phân công cũ nhưng không còn áp dụng.
+4.6.	Địa điểm không tồn tại hoặc đã ngừng hoạt động: Hệ thống yêu cầu chọn lại.
+4.6.1.	Thu hồi phạm vi của Content Manager đang có nội dung chờ duyệt: Hệ thống cảnh báo; các nội dung này vẫn được Administrator xử lý bình thường.
+6.1.	Dữ liệu không hợp lệ: Hệ thống yêu cầu chỉnh sửa.
+7.1.	Tài khoản đang đăng nhập không được tự khóa hoặc tự hạ quyền quản trị cuối cùng của hệ thống.
+Nhóm 2 – Quản lý địa điểm du lịch
+UC06 – Xem danh sách và chi tiết địa điểm
+Use Case ID
+UC06
+Tên Use Case
+Xem danh sách và chi tiết địa điểm
+Tác nhân
+Administrator, Content Manager
+Mô tả chức năng
+Cho phép người dùng quản trị xem danh sách địa điểm và thông tin chi tiết của từng địa điểm.
+Điều kiện tiên quyết
+Người dùng đã đăng nhập.
+Yêu cầu
+Administrator xem được toàn bộ địa điểm.
+Content Manager chỉ xem được địa điểm được phân công.
+Danh sách quản trị hiển thị tên tiếng Anh; trang chi tiết hiển thị tên và mô tả ngắn theo từng ngôn ngữ.
+Kịch bản chính
+1.	Người dùng truy cập chức năng Quản lý địa điểm.
+2.	Hệ thống hiển thị danh sách địa điểm theo quyền hạn.
+3.	Người dùng chọn một địa điểm.
+4.	Hệ thống hiển thị thông tin chi tiết địa điểm.
+5.	Người dùng xem thông tin và danh sách POI thuộc địa điểm.
+Kịch bản phụ
+2.1.	Không có địa điểm: Hệ thống hiển thị danh sách trống.
+3.1.	Địa điểm không tồn tại: Hệ thống thông báo lỗi.
+3.2.	Người dùng không có quyền xem địa điểm: Hệ thống từ chối truy cập.
+UC07 – Quản lý địa điểm
+Use Case ID
+UC07
+Tên Use Case
+Quản lý địa điểm
+Tác nhân
+Administrator
+Mô tả chức năng
+Cho phép Administrator thêm mới, cập nhật, xóa và thay đổi trạng thái hoạt động của địa điểm du lịch.
+Điều kiện tiên quyết
+Administrator đã đăng nhập.
+Yêu cầu
+Địa điểm phải có tên tiếng Anh và thông tin cần thiết.Không được xóa địa điểm đang chứa POI.Có thể chuyển địa điểm sang trạng thái Ngừng hoạt động.Tên và mô tả ngắn của địa điểm được nhập theo từng ngôn ngữ đang hoạt động. Bắt buộc có bản tiếng Anh, các ngôn ngữ khác tùy chọn; ngôn ngữ thiếu sẽ hiển thị bằng tiếng Anh.Địa điểm mới tạo xong sẽ tự xuất hiện trên bản đồ (nếu có tọa độ), không cần thao tác thêm.
+Kịch bản chính
+1.	Administrator truy cập chức năng Quản lý địa điểm.
+2.	Hệ thống hiển thị danh sách địa điểm.
+3.	Administrator chọn một thao tác.
+4.	Administrator thực hiện một trong các thao tác:
+4.1. Thêm địa điểm mới (nhập tên, mô tả ngắn theo từng ngôn ngữ và địa chỉ). Hệ thống gọi dịch vụ geocoding để đổi địa chỉ thành tọa độ (vĩ độ, kinh độ) và lưu vào địa điểm. Địa điểm mới tạo xong sẽ tự xuất hiện trên bản đồ, không cần thao tác thêm.
+4.2. Cập nhật thông tin địa điểm (kể cả tên, mô tả theo từng ngôn ngữ và địa chỉ). Khi Administrator thay đổi địa chỉ, hệ thống tính lại tọa độ thông qua dịch vụ geocoding theo cùng luồng như khi Thêm địa điểm.
+4.3. Xóa địa điểm.
+4.4. Thay đổi trạng thái hoạt động.
+5.	Administrator xác nhận thao tác.
+6.	Hệ thống kiểm tra dữ liệu.
+7.	Hệ thống lưu thay đổi.
+8.	Hệ thống thông báo kết quả.
+Kịch bản phụ
+4.1.1.Geocoding không tìm ra hoặc ra sai vị trí: Hệ thống thông báo cho Administrator, cho phép sửa lại địa chỉ hoặc chấm tay vị trí trên bản đồ để xác định tọa độ (khi sửa địa chỉ ở 4.2 cũng áp dụng cùng luồng xử lý này).
+4.3.1.	Địa điểm đang chứa POI: Hệ thống không cho phép xóa và đề xuất chuyển sang Ngừng hoạt động.
+6.1.	Thông tin không hợp lệ: Hệ thống yêu cầu nhập lại.
+6.2.	Địa điểm đã được sử dụng trong dữ liệu liên quan: Hệ thống từ chối xóa.
+6.3.	Thiếu tên tiếng Anh: Hệ thống yêu cầu nhập.
+Nhóm 3 – Quản lý điểm thuyết minh (POI)
+UC08 – Xem danh sách và chi tiết POI
+Use Case ID
+UC08
+Tên Use Case
+Xem danh sách và chi tiết POI
+Tác nhân
+Administrator, Content Manager
+Mô tả chức năng
+Cho phép người dùng xem danh sách và thông tin chi tiết các điểm thuyết minh thuộc địa điểm.
+Điều kiện tiên quyết
+Người dùng đã đăng nhập.
+Yêu cầu
+Administrator xem được toàn bộ POI.
+Content Manager chỉ xem POI thuộc địa điểm được phân công.
+Danh sách quản trị hiển thị tên tiếng Anh; trang chi tiết hiển thị tên và mô tả ngắn theo từng ngôn ngữ.
+Kịch bản chính
+1.	Người dùng truy cập chức năng Quản lý POI.
+2.	Hệ thống hiển thị danh sách địa điểm hoặc POI.
+3.	Người dùng chọn địa điểm cần xem.
+4.	Hệ thống hiển thị danh sách POI thuộc địa điểm.
+5.	Người dùng chọn một POI.
+6.	Hệ thống hiển thị thông tin chi tiết POI.
+7.	Người dùng xem thông tin và nội dung liên quan.
+Kịch bản phụ
+3.1.	Địa điểm không có POI: Hệ thống hiển thị danh sách trống.
+5.1.	POI không tồn tại: Hệ thống thông báo lỗi.
+5.2.	POI thuộc địa điểm ngoài phạm vi được phân công: Hệ thống từ chối truy cập.
+UC09 – Quản lý POI
+Use Case ID
+UC09
+Tên Use Case
+Quản lý POI
+Tác nhân
+Administrator, Content Manager
+Mô tả chức năng
+Cho phép thêm mới, cập nhật, xóa và thay đổi trạng thái của POI.
+Điều kiện tiên quyết
+Người dùng đã đăng nhập.
+Địa điểm chứa POI đã tồn tại và đang hoạt động.
+Yêu cầu
+Administrator được quản lý toàn bộ POI.
+Content Manager chỉ quản lý POI thuộc địa điểm được phân công; POI mới tạo trong địa điểm này tự động thuộc phạm vi của Content Manager.
+POI phải thuộc một địa điểm.
+Tên và mô tả ngắn của POI được nhập theo từng ngôn ngữ đang hoạt động. Bắt buộc có bản tiếng Anh, các ngôn ngữ khác tùy chọn; ngôn ngữ thiếu sẽ hiển thị bằng tiếng Anh.
+Kịch bản chính
+1.	Người dùng truy cập chức năng Quản lý POI.
+2.	Hệ thống hiển thị danh sách POI theo quyền hạn.
+3.	Người dùng chọn thao tác quản lý.
+4.	Người dùng thực hiện một trong các thao tác:
+4.1. Thêm POI mới (nhập tên và mô tả ngắn theo từng ngôn ngữ).
+4.2. Cập nhật thông tin POI (kể cả tên và mô tả theo từng ngôn ngữ).
+4.3. Xóa POI.
+4.4. Thay đổi trạng thái POI.
+5.	Người dùng xác nhận thao tác.
+6.	Hệ thống kiểm tra dữ liệu và quyền hạn.
+7.	Hệ thống lưu thay đổi.
+8.	Hệ thống thông báo kết quả.
+Kịch bản phụ
+4.1.1.	Địa điểm không tồn tại hoặc đã ngừng hoạt động: Hệ thống không cho phép tạo POI.
+4.3.1.	POI đã từng có nội dung xuất bản: Hệ thống không cho xóa và đề xuất chuyển sang Ngừng hoạt động.
+4.3.2.	POI chỉ có nội dung chưa từng xuất bản: Hệ thống yêu cầu xác nhận, sau đó xóa POI cùng các nội dung nháp và QR Code của POI.
+6.1.	Content Manager thao tác trên địa điểm hoặc POI ngoài phạm vi được phân công: Hệ thống từ chối.
+6.2.	Thông tin POI không hợp lệ: Hệ thống yêu cầu chỉnh sửa.
+6.3.	Thiếu tên tiếng Anh: Hệ thống yêu cầu nhập.
+Nhóm 4 – Quản lý ngôn ngữ và nội dung thuyết minh
+UC10 – Quản lý ngôn ngữ
+Use Case ID
+UC10
+Tên Use Case
+Quản lý ngôn ngữ
+Tác nhân
+Administrator
+Mô tả chức năng
+Cho phép Administrator thêm, cập nhật và bật hoặc tắt ngôn ngữ được hỗ trợ trong hệ thống.
+Điều kiện tiên quyết
+Administrator đã đăng nhập.
+Yêu cầu
+Mỗi ngôn ngữ có mã ngôn ngữ duy nhất.
+Tiếng Anh là ngôn ngữ dự phòng của hệ thống, luôn hoạt động, không được tắt.
+Hệ thống không xóa ngôn ngữ, chỉ bật hoặc tắt.
+Tắt ngôn ngữ không xóa nội dung đã có; ngôn ngữ bị tắt không hiển thị cho Visitor và không được chọn khi tạo, dịch hoặc xuất bản nội dung mới.
+Chỉ thêm ngôn ngữ mà cả dịch vụ dịch tự động và dịch vụ TTS đều hỗ trợ; hệ thống không hỗ trợ ngôn ngữ hiếm.
+Kịch bản chính
+1.	Administrator truy cập chức năng Quản lý ngôn ngữ.
+2.	Hệ thống hiển thị danh sách ngôn ngữ.
+3.	Administrator chọn thao tác.
+4.	Administrator thực hiện một trong các thao tác:
+4.1. Thêm ngôn ngữ mới.
+4.2. Cập nhật thông tin ngôn ngữ.
+4.3. Bật hoặc tắt ngôn ngữ.
+5.	Administrator xác nhận thao tác.
+6.	Hệ thống kiểm tra dữ liệu.
+7.	Hệ thống cập nhật danh sách ngôn ngữ.
+8.	Hệ thống thông báo kết quả.
+Kịch bản phụ
+4.1.1.	Mã ngôn ngữ đã tồn tại: Hệ thống thông báo lỗi.
+4.1.2.	Ngôn ngữ chưa được dịch vụ dịch hoặc TTS hỗ trợ: Hệ thống không cho thêm.
+4.3.1.	Ngôn ngữ là tiếng Anh: Hệ thống không cho phép tắt.
+4.3.2.	Ngôn ngữ đang có nội dung đã xuất bản: Hệ thống cảnh báo ảnh hưởng đến Visitor và chỉ tắt sau khi Administrator xác nhận.
+6.1.	Dữ liệu không hợp lệ: Hệ thống yêu cầu nhập lại.
+UC11 – Thiết lập giọng đọc mặc định theo ngôn ngữ
+Use Case ID
+UC11
+Tên Use Case
+Thiết lập giọng đọc mặc định theo ngôn ngữ
+Tác nhân
+Administrator
+Mô tả chức năng
+Cho phép Administrator chọn giọng đọc mặc định cho từng ngôn ngữ đang hoạt động, được áp dụng khi tạo audio.
+Điều kiện tiên quyết
+Administrator đã đăng nhập.
+Hệ thống có ít nhất một ngôn ngữ đang hoạt động.
+Yêu cầu
+Mỗi ngôn ngữ có tối đa một giọng đọc mặc định.
+Giọng đọc phải thuộc đúng ngôn ngữ và được dịch vụ TTS hỗ trợ.
+Thay đổi chỉ áp dụng cho audio tạo sau đó, không làm đổi audio đã có.
+Ngôn ngữ chưa có giọng mặc định thì người dùng chọn giọng khi tạo audio (UC19, UC20).
+Kịch bản chính
+1.	Administrator truy cập chức năng Thiết lập giọng đọc mặc định.
+2.	Hệ thống hiển thị các ngôn ngữ đang hoạt động và giọng đọc mặc định hiện tại của từng ngôn ngữ.
+3.	Administrator chọn một ngôn ngữ.
+4.	Hệ thống hiển thị danh sách giọng đọc khả dụng của ngôn ngữ đó.
+5.	Administrator chọn giọng đọc mặc định.
+6.	Administrator xác nhận thay đổi.
+7.	Hệ thống kiểm tra ngôn ngữ và giọng đọc.
+8.	Hệ thống lưu giọng đọc mặc định.
+9.	Hệ thống thông báo kết quả.
+Kịch bản phụ
+4.1.	Ngôn ngữ chưa có giọng đọc khả dụng: Hệ thống thông báo và không cho đặt giọng mặc định.
+7.1.	Ngôn ngữ đã bị tắt hoặc giọng đọc không thuộc ngôn ngữ: Hệ thống từ chối.
+7.2.	Giọng đọc không còn khả dụng: Hệ thống yêu cầu chọn lại.
+UC12 – Xem danh sách và chi tiết nội dung thuyết minh
+Use Case ID
+UC12
+Tên Use Case
+Xem danh sách và chi tiết nội dung thuyết minh
+Tác nhân
+Administrator, Content Manager
+Mô tả chức năng
+Cho phép người dùng xem danh sách nội dung thuyết minh, thông tin chi tiết, ngôn ngữ, trạng thái và audio tương ứng.
+Điều kiện tiên quyết
+Người dùng đã đăng nhập.
+Yêu cầu
+Administrator xem được toàn bộ nội dung.
+Content Manager chỉ xem nội dung thuộc POI của địa điểm được phân công.
+Hiển thị rõ trạng thái từng phiên bản (Bản nháp, Chờ duyệt, Bị từ chối, Đã xuất bản, Đã gỡ, Đã thay thế) và dấu Cần rà soát của bản dịch (xem mục 1.3).
+Kết quả kiểm duyệt (trạng thái, lý do từ chối) được hiển thị tại đây; hệ thống không gửi thông báo riêng.
+Kịch bản chính
+1.	Người dùng truy cập chức năng Quản lý nội dung.
+2.	Hệ thống hiển thị danh sách nội dung theo quyền hạn.
+3.	Người dùng tìm kiếm hoặc lọc nội dung theo POI, ngôn ngữ hoặc trạng thái.
+4.	Người dùng chọn một nội dung.
+5.	Hệ thống hiển thị văn bản thuyết minh.
+6.	Hệ thống hiển thị bản dịch liên quan, trạng thái từng phiên bản và audio gắn với từng phiên bản.
+7.	Hệ thống hiển thị lịch sử kiểm duyệt (người gửi, người xử lý, kết quả, lý do từ chối).
+8.	Người dùng xem thông tin chi tiết.
+Kịch bản phụ
+3.1.	Không tìm thấy nội dung phù hợp: Hệ thống hiển thị danh sách trống.
+4.1.	Nội dung không tồn tại: Hệ thống thông báo lỗi.
+4.2.	Nội dung thuộc địa điểm ngoài phạm vi được phân công: Hệ thống từ chối truy cập.
+UC13 – Tạo nội dung thuyết minh
+Use Case ID
+UC13
+Tên Use Case
+Tạo nội dung thuyết minh
+Tác nhân
+Administrator, Content Manager
+Mô tả chức năng
+Cho phép người dùng tạo nội dung thuyết minh mới cho một POI bằng một ngôn ngữ cụ thể. Phiên bản đầu tiên được lưu ở trạng thái Bản nháp.
+Điều kiện tiên quyết
+Người dùng đã đăng nhập.
+POI đã tồn tại và đang hoạt động.
+Ngôn ngữ được chọn đang hoạt động.
+Content Manager có quyền quản lý POI tương ứng (POI thuộc địa điểm được phân công).
+Yêu cầu
+Mỗi cặp (POI, ngôn ngữ) chỉ có một nội dung; nội dung có thể có nhiều phiên bản theo thời gian (mục 1.3).
+Phiên bản đầu tiên luôn ở trạng thái Bản nháp; tạo xong không tự động gửi duyệt hay xuất bản.
+Việc gửi duyệt hoặc xuất bản được thực hiện ở UC14, sau khi nội dung đủ điều kiện xuất bản.
+Kịch bản chính
+1.	Người dùng truy cập chức năng Tạo nội dung thuyết minh.
+2.	Hệ thống hiển thị biểu mẫu tạo nội dung.
+3.	Người dùng chọn POI.
+4.	Người dùng chọn ngôn ngữ.
+5.	Người dùng nhập tiêu đề và văn bản thuyết minh.
+6.	Người dùng chọn Lưu bản nháp.
+7.	Hệ thống kiểm tra quyền hạn và tính hợp lệ của dữ liệu.
+8.	Hệ thống kiểm tra POI chưa có nội dung ở ngôn ngữ đã chọn.
+9.	Hệ thống lưu phiên bản đầu tiên ở trạng thái Bản nháp.
+10.	Hệ thống thông báo kết quả và mở trang chi tiết nội dung để người dùng tiếp tục (dịch, chọn giọng đọc, tạo audio, gửi duyệt).
+Kịch bản phụ
+3.1.	POI không tồn tại, đã ngừng hoạt động hoặc thuộc địa điểm ngoài phạm vi được phân công: Hệ thống từ chối thao tác.
+4.1.	Ngôn ngữ đã bị tắt: Hệ thống yêu cầu chọn ngôn ngữ khác.
+7.1.	Tiêu đề hoặc văn bản bị bỏ trống: Hệ thống yêu cầu nhập đầy đủ.
+8.1.	Đã tồn tại nội dung cho POI và ngôn ngữ này: Hệ thống thông báo và mở nội dung hiện có để cập nhật theo UC14.
+UC14 – Cập nhật và gửi duyệt nội dung thuyết minh
+Use Case ID
+UC14
+Tên Use Case
+Cập nhật và gửi duyệt nội dung thuyết minh
+Tác nhân
+Administrator, Content Manager
+Mô tả chức năng
+Cho phép người dùng chỉnh sửa nội dung thuyết minh đã tồn tại và đưa phiên bản đủ điều kiện vào quy trình xuất bản: Content Manager gửi duyệt, Administrator có thể xuất bản trực tiếp.
+Điều kiện tiên quyết
+Người dùng đã đăng nhập.
+Nội dung đã tồn tại.
+Content Manager có quyền quản lý POI tương ứng (POI thuộc địa điểm được phân công).
+Yêu cầu
+Phiên bản đang Chờ duyệt hoặc Đã xuất bản không được sửa trực tiếp.
+Sửa nội dung đã xuất bản tạo phiên bản Bản nháp mới; phiên bản đang xuất bản vẫn hiển thị cho Visitor, kèm audio của chính nó, cho đến khi phiên bản mới được xuất bản.
+Mỗi nội dung chỉ có một phiên bản đang soạn (Bản nháp, Chờ duyệt hoặc Bị từ chối) tại một thời điểm.
+Khi văn bản thuyết minh của phiên bản đang soạn thay đổi, audio gắn với phiên bản đó bị đánh dấu lỗi thời. Chỉ đổi tiêu đề thì giữ nguyên audio.
+Chỉ được gửi duyệt hoặc xuất bản khi phiên bản đủ điều kiện xuất bản (mục 1.3).
+Content Manager chỉ gửi duyệt. Administrator xuất bản trực tiếp theo Quy trình xuất bản (mục 1.4), không cần qua UC15.
+Người dùng có thể xóa phiên bản đang soạn (Bản nháp hoặc Bị từ chối). Nếu nội dung chưa từng có phiên bản phát hành thì nội dung bị xóa theo; nếu đã từng, phiên bản phát hành giữ nguyên. Nội dung đã từng xuất bản chỉ được gỡ xuất bản (UC16), không xóa.
+Chỉ phiên bản Bản nháp hoặc Bị từ chối được gửi duyệt hoặc xuất bản trực tiếp. Phiên bản Bị từ chối có thể gửi lại ngay mà không cần sửa văn bản, ví dụ sau khi bổ sung audio ở UC22.
+Phiên bản mới kế thừa audio của phiên bản nguồn; audio chỉ bị đánh dấu lỗi thời khi văn bản thay đổi.
+Kịch bản chính
+1.	Người dùng truy cập danh sách nội dung thuyết minh.
+2.	Người dùng chọn nội dung cần cập nhật.
+3.	Hệ thống hiển thị phiên bản hiện tại (phiên bản đang soạn nếu có, nếu không thì phiên bản đã phát hành), trạng thái và audio kèm theo.
+4.	Người dùng chỉnh sửa tiêu đề hoặc văn bản thuyết minh.
+5.	Người dùng chọn Lưu bản nháp.
+6.	Hệ thống kiểm tra quyền hạn và tính hợp lệ.
+7.	Hệ thống lưu thay đổi:
+7.1. Phiên bản đang là Bản nháp hoặc Bị từ chối: cập nhật tại chỗ và chuyển về Bản nháp.
+7.2. Phiên bản đang là Đã xuất bản hoặc Đã gỡ (chưa có phiên bản đang soạn): tạo phiên bản mới ở trạng thái Bản nháp, kế thừa văn bản và audio của phiên bản đó (bản ghi audio riêng trỏ cùng tệp); phiên bản cũ giữ nguyên.
+8.	Nếu văn bản thay đổi, hệ thống đánh dấu audio của phiên bản đang soạn là lỗi thời.
+9.	Hệ thống thông báo kết quả.
+10.	Khi nội dung đã sẵn sàng (đã có audio hợp lệ), người dùng chọn Gửi duyệt hoặc Xuất bản cho phiên bản đang soạn (Bản nháp hoặc Bị từ chối):
+10.1. Hệ thống kiểm tra điều kiện xuất bản.
+10.2. Nếu là Content Manager: hệ thống chuyển phiên bản sang Chờ duyệt; phiên bản xuất hiện trong danh sách chờ kiểm duyệt của Administrator (UC15).
+10.3. Nếu là Administrator: hệ thống thực hiện Quy trình xuất bản (mục 1.4) và hiển thị kết quả.
+Kịch bản phụ
+2.1.	Nội dung không tồn tại: Hệ thống thông báo lỗi.
+2.2.	Nội dung thuộc địa điểm ngoài phạm vi được phân công: Hệ thống từ chối truy cập.
+3.1.	Phiên bản đang ở trạng thái Chờ duyệt: Hệ thống chỉ cho xem. Content Manager có thể Thu hồi để đưa phiên bản về Bản nháp; việc phê duyệt hoặc từ chối do Administrator xử lý ở UC15.
+4.1.	Người dùng không chỉnh sửa mà chỉ muốn gửi duyệt hoặc xuất bản (kể cả gửi lại phiên bản Bị từ chối): Hệ thống bỏ qua các bước 4 đến 9 và chuyển sang bước 10.
+4.2.	Người dùng chọn Xóa bản nháp: Hệ thống yêu cầu xác nhận, xóa phiên bản đang soạn cùng audio chỉ gắn với phiên bản đó, rồi hiển thị kết quả.
+4.2.1.	Không có phiên bản đang soạn: Hệ thống thông báo không có bản nháp để xóa.
+6.1.	Dữ liệu không hợp lệ: Hệ thống yêu cầu chỉnh sửa.
+10.1.1.	Phiên bản chưa đủ điều kiện xuất bản (ví dụ thiếu audio hợp lệ, audio lỗi thời hoặc bản dịch còn dấu Cần rà soát): Hệ thống không gửi duyệt, hiển thị lý do và giữ nguyên trạng thái phiên bản.
+10.1.2.	Không có phiên bản đang soạn để gửi duyệt hoặc xuất bản: Hệ thống thông báo và yêu cầu chỉnh sửa trước.
+10.2.1.	Phiên bản đã ở trạng thái Chờ duyệt: Hệ thống từ chối thao tác gửi duyệt lặp lại.
+UC15 – Kiểm duyệt và xuất bản nội dung
+Use Case ID
+UC15
+Tên Use Case
+Kiểm duyệt và xuất bản nội dung
+Tác nhân
+Administrator
+Mô tả chức năng
+Cho phép Administrator xem xét phiên bản do Content Manager gửi duyệt, phê duyệt hoặc từ chối. Khi phê duyệt, hệ thống tự động xuất bản phiên bản đó.
+Điều kiện tiên quyết
+Administrator đã đăng nhập.
+Có phiên bản đang ở trạng thái Chờ duyệt.
+Yêu cầu
+Chỉ Administrator có quyền kiểm duyệt.
+Phê duyệt đồng nghĩa với xuất bản ngay, theo Quy trình xuất bản (mục 1.4); không có bước xuất bản riêng.
+Phiên bản đang Chờ duyệt không bị chỉnh sửa trong lúc được xem xét.
+Nếu từ chối, bắt buộc ghi lý do.
+Mọi quyết định đều được lưu vào lịch sử kiểm duyệt.
+Kịch bản chính
+1.	Administrator truy cập danh sách nội dung chờ kiểm duyệt.
+2.	Hệ thống hiển thị các phiên bản do Content Manager gửi.
+3.	Administrator chọn phiên bản cần kiểm duyệt.
+4.	Hệ thống hiển thị nội dung, POI, ngôn ngữ, audio và phiên bản đang xuất bản (nếu có) để đối chiếu.
+5.	Administrator kiểm tra nội dung và nghe thử audio.
+6.	Administrator chọn Phê duyệt hoặc Từ chối.
+7.	Nếu Administrator chọn Phê duyệt:
+7.1. Hệ thống thực hiện Quy trình xuất bản (mục 1.4).
+7.2. Hệ thống cập nhật trạng thái Đã xuất bản trong danh sách nội dung.
+8.	Nếu Administrator chọn Từ chối:
+8.1. Administrator nhập lý do từ chối.
+8.2. Hệ thống chuyển phiên bản sang trạng thái Bị từ chối.
+8.3. Hệ thống hiển thị trạng thái Bị từ chối kèm lý do để Content Manager xem ở UC12.
+9.	Hệ thống lưu lịch sử kiểm duyệt.
+Kịch bản phụ
+1.1.	Không có phiên bản chờ kiểm duyệt: Hệ thống hiển thị danh sách trống.
+3.1.	Phiên bản đã được người khác xử lý hoặc đã bị thu hồi: Hệ thống yêu cầu tải lại trạng thái mới nhất.
+7.1.1.	Phiên bản không còn đủ điều kiện xuất bản (ví dụ ngôn ngữ vừa bị tắt, audio lỗi, bản dịch còn dấu Cần rà soát): Hệ thống không xuất bản, giữ phiên bản ở Chờ duyệt và hiển thị lý do để Administrator xử lý.
+8.1.1.	Administrator chưa nhập lý do từ chối: Hệ thống yêu cầu bổ sung.
+UC16 – Gỡ xuất bản và xuất bản lại nội dung
+Use Case ID
+UC16
+Tên Use Case
+Gỡ xuất bản và xuất bản lại nội dung
+Tác nhân
+Administrator
+Mô tả chức năng
+Cho phép Administrator gỡ phiên bản đang xuất bản khỏi Visitor, hoặc xuất bản lại phiên bản đã gỡ mà không cần qua quy trình duyệt.
+Điều kiện tiên quyết
+Administrator đã đăng nhập.
+Có nội dung ở trạng thái Đã xuất bản hoặc Đã gỡ.
+Yêu cầu
+Gỡ xuất bản phải ghi lý do.
+Mỗi nội dung có tối đa một phiên bản đã phát hành (Đã xuất bản hoặc Đã gỡ); xuất bản lại áp dụng cho phiên bản Đã gỡ đó.
+Phiên bản đã gỡ không còn hiển thị cho Visitor nhưng vẫn được lưu lại.
+Gỡ xuất bản không ảnh hưởng đến phiên bản đang soạn của cùng nội dung.
+Xuất bản lại phải đủ điều kiện xuất bản và thực hiện theo Quy trình xuất bản (mục 1.4).
+Mọi thao tác được lưu vào lịch sử.
+Kịch bản chính
+1.	Administrator truy cập danh sách nội dung và lọc theo trạng thái Đã xuất bản hoặc Đã gỡ.
+2.	Administrator chọn nội dung.
+3.	Hệ thống hiển thị phiên bản và trạng thái hiện tại.
+4.	Administrator chọn một thao tác:
+4.1. Gỡ xuất bản.
+4.2. Xuất bản lại.
+5.	Với Gỡ xuất bản, Administrator nhập lý do.
+6.	Administrator xác nhận thao tác.
+7.	Hệ thống thực hiện:
+7.1. Gỡ xuất bản: chuyển phiên bản sang Đã gỡ và ngừng hiển thị cho Visitor.
+7.2. Xuất bản lại: kiểm tra điều kiện xuất bản và thực hiện Quy trình xuất bản (mục 1.4).
+8.	Hệ thống lưu lịch sử và cập nhật trạng thái hiển thị trong danh sách nội dung.
+Kịch bản phụ
+4.1.1.	Nội dung không có phiên bản đang xuất bản: Hệ thống không cho gỡ.
+5.1.	Administrator chưa nhập lý do khi gỡ: Hệ thống yêu cầu bổ sung.
+6.1.	Nội dung bị gỡ là tiếng Anh (ngôn ngữ dự phòng): Hệ thống cảnh báo POI sẽ không còn nội dung dự phòng cho Visitor và yêu cầu xác nhận.
+7.1.1.	Trạng thái đã bị người khác thay đổi: Hệ thống yêu cầu tải lại trạng thái mới nhất.
+7.2.1.	Phiên bản không còn đủ điều kiện xuất bản: Hệ thống không cho xuất bản lại và thông báo lý do.
+Nhóm 5 – Dịch tự động và tạo audio
+UC17 – Yêu cầu dịch tự động
+Use Case ID
+UC17
+Tên Use Case
+Yêu cầu dịch tự động
+Tác nhân
+Administrator, Content Manager, Dịch vụ dịch tự động
+Mô tả chức năng
+Cho phép người dùng gửi văn bản thuyết minh đến dịch vụ dịch tự động để tạo bản dịch sang ngôn ngữ khác.
+Điều kiện tiên quyết
+Người dùng đã đăng nhập.
+Nội dung nguồn đã tồn tại; người dùng chọn phiên bản nguồn (mặc định là phiên bản mới nhất).
+Ngôn ngữ đích đang hoạt động.
+Content Manager có quyền quản lý POI tương ứng.
+Yêu cầu
+Có nội dung nguồn hợp lệ.
+Không dịch sang cùng ngôn ngữ nguồn.
+Bản dịch tự động phải được lưu ở trạng thái Bản nháp.
+Bản dịch phải được rà soát và kiểm duyệt trước khi xuất bản.
+Bản dịch được lưu kèm tham chiếu đến phiên bản nguồn đã dịch.
+Bản dịch mới tạo mang dấu Cần rà soát cho đến khi hoàn tất rà soát ở UC18.
+Bản dịch đi qua cùng quy trình gửi duyệt hoặc xuất bản như mọi nội dung (UC14, UC15).
+Việc kiểm tra nội dung đích và độ dài phải thực hiện trước khi gọi dịch vụ để không phát sinh chi phí không cần thiết.
+Kịch bản chính
+1.	Người dùng truy cập nội dung cần dịch.
+2.	Hệ thống hiển thị nội dung nguồn.
+3.	Người dùng chọn ngôn ngữ đích.
+4.	Người dùng gửi yêu cầu dịch tự động.
+5.	Hệ thống kiểm tra nội dung nguồn và ngôn ngữ đích.
+6.	Hệ thống kiểm tra nội dung đích (nếu đã có) và độ dài văn bản nguồn trước khi gọi dịch vụ.
+7.	Hệ thống gửi văn bản nguồn đến Dịch vụ dịch tự động.
+8.	Dịch vụ dịch tự động xử lý và trả về bản dịch.
+9.	Hệ thống tiếp nhận kết quả.
+10.	Hệ thống lưu bản dịch thành nội dung mới ở trạng thái Bản nháp.
+11.	Hệ thống thông báo dịch thành công.
+Kịch bản phụ
+3.1.	Ngôn ngữ đích chưa được hỗ trợ: Hệ thống yêu cầu chọn lại.
+5.1.	Nội dung nguồn không hợp lệ: Hệ thống từ chối yêu cầu.
+6.1.	Đã có nội dung ở ngôn ngữ đích: nếu phiên bản đang soạn là Bản nháp hoặc Bị từ chối, hệ thống yêu cầu xác nhận ghi đè trước khi gọi dịch vụ; nếu chỉ có phiên bản Đã xuất bản hoặc Đã gỡ, hệ thống sẽ tạo phiên bản Bản nháp mới; nếu đang Chờ duyệt, hệ thống từ chối yêu cầu và không gọi dịch vụ.
+6.2.	Văn bản nguồn vượt giới hạn độ dài đã biết của dịch vụ dịch: Hệ thống thông báo và gợi ý chia nhỏ văn bản, không gọi dịch vụ.
+8.1.	Dịch vụ dịch tự động không phản hồi: Hệ thống thông báo lỗi và cho phép thử lại.
+8.2.	Dịch vụ báo văn bản vượt giới hạn độ dài: Hệ thống thông báo và gợi ý chia nhỏ văn bản.
+9.1.	Kết quả dịch rỗng hoặc không hợp lệ: Hệ thống không lưu bản dịch.
+UC18 – Rà soát và chỉnh sửa bản dịch
+Use Case ID
+UC18
+Tên Use Case
+Rà soát và chỉnh sửa bản dịch
+Tác nhân
+Administrator, Content Manager
+Mô tả chức năng
+Cho phép người dùng đối chiếu bản dịch với nội dung nguồn, chỉnh sửa nếu cần và xác nhận hoàn tất rà soát để gỡ dấu Cần rà soát.
+Điều kiện tiên quyết
+Người dùng đã đăng nhập.
+Nội dung bản dịch đang có dấu Cần rà soát.
+Content Manager có quyền quản lý POI tương ứng.
+Yêu cầu
+Dấu Cần rà soát gắn với nội dung (POI, ngôn ngữ) và chỉ được gỡ khi người dùng xác nhận hoàn tất rà soát.
+Chỉnh sửa được lưu theo quy tắc phiên bản của UC14: sửa tại chỗ nếu là Bản nháp hoặc Bị từ chối, tạo phiên bản Bản nháp mới nếu đang là Đã xuất bản hoặc Đã gỡ.
+Không chỉnh sửa phiên bản đang Chờ duyệt.
+Nếu không chỉnh sửa, việc xác nhận rà soát không tạo phiên bản mới.
+Nội dung còn dấu Cần rà soát không đủ điều kiện xuất bản (mục 1.3).
+Việc gửi duyệt hoặc xuất bản thực hiện ở UC14, không thực hiện tại UC này.
+Kịch bản chính
+1.	Người dùng truy cập danh sách bản dịch, có thể lọc theo dấu Cần rà soát.
+2.	Người dùng chọn bản dịch cần rà soát.
+3.	Hệ thống hiển thị nội dung nguồn và bản dịch cạnh nhau, kèm phiên bản nguồn đã dùng để dịch.
+4.	Người dùng kiểm tra bản dịch.
+5.	Người dùng chỉnh sửa những nội dung chưa chính xác (bỏ qua nếu bản dịch đã đúng).
+6.	Nếu có chỉnh sửa, người dùng lưu bản dịch.
+7.	Hệ thống kiểm tra dữ liệu và quyền hạn.
+8.	Nếu có chỉnh sửa, hệ thống lưu thay đổi theo quy tắc phiên bản của UC14.
+9.	Người dùng xác nhận hoàn tất rà soát.
+10.	Hệ thống gỡ dấu Cần rà soát và hiển thị kết quả.
+Kịch bản phụ
+2.1.	Bản dịch không tồn tại: Hệ thống thông báo lỗi.
+2.2.	Bản dịch đang Chờ duyệt: Hệ thống không cho chỉnh sửa; người dùng chỉ có thể xác nhận hoàn tất rà soát.
+3.1.	Phiên bản nguồn đã có bản mới hơn: Hệ thống cảnh báo và gợi ý dịch lại theo UC17.
+7.1.	Content Manager không có quyền với POI: Hệ thống từ chối thao tác.
+UC19 – Chọn giọng đọc
+Use Case ID
+UC19
+Tên Use Case
+Chọn giọng đọc
+Tác nhân
+Administrator, Content Manager
+Mô tả chức năng
+Cho phép người dùng đổi giọng đọc của nội dung thuyết minh so với giọng mặc định của ngôn ngữ (UC11) trước khi tạo audio.
+Điều kiện tiên quyết
+Người dùng đã đăng nhập.
+Nội dung thuyết minh đã tồn tại.
+Phiên bản nội dung đang ở trạng thái Bản nháp hoặc Bị từ chối.
+Yêu cầu
+Giọng đọc phải tương thích với ngôn ngữ nội dung.
+Chỉ hiển thị các giọng đọc được dịch vụ TTS hỗ trợ.
+Kịch bản chính
+1.	Người dùng truy cập nội dung cần tạo audio.
+2.	Hệ thống hiển thị ngôn ngữ của nội dung và giọng đọc đang áp dụng (giọng mặc định của ngôn ngữ nếu chưa chọn).
+3.	Người dùng chọn chức năng Chọn giọng đọc.
+4.	Hệ thống hiển thị danh sách giọng đọc phù hợp.
+5.	Người dùng chọn giọng đọc.
+6.	Người dùng xác nhận lựa chọn.
+7.	Hệ thống lưu giọng đọc được chọn.
+8.	Hệ thống thông báo thành công.
+Kịch bản phụ
+1.1.	Phiên bản đang Chờ duyệt hoặc Đã xuất bản: Hệ thống không cho chọn và hướng dẫn tạo phiên bản mới theo UC14.
+4.1.	Không có giọng đọc phù hợp: Hệ thống thông báo không hỗ trợ.
+5.1.	Giọng đọc không tương thích với ngôn ngữ: Hệ thống từ chối lựa chọn.
+7.1.	Không thể lưu lựa chọn: Hệ thống thông báo lỗi.
+UC20 – Yêu cầu tạo audio TTS
+Use Case ID
+UC20
+Tên Use Case
+Yêu cầu tạo audio TTS
+Tác nhân
+Administrator, Content Manager, Dịch vụ TTS
+Mô tả chức năng
+Cho phép người dùng gửi văn bản thuyết minh đến dịch vụ TTS để chuyển đổi thành file audio.
+Điều kiện tiên quyết
+Người dùng đã đăng nhập.
+Nội dung thuyết minh đã tồn tại.
+Ngôn ngữ của nội dung có giọng đọc mặc định (UC11) hoặc người dùng đã chọn giọng đọc (UC19).
+Phiên bản nội dung đang ở trạng thái Bản nháp hoặc Bị từ chối.
+Yêu cầu
+Nội dung phải có văn bản hợp lệ.
+Giọng đọc phải tương thích với ngôn ngữ.
+Audio được tạo phải gắn với phiên bản nội dung tương ứng.
+Audio chỉ được phát cho Visitor khi phiên bản nội dung tương ứng đã xuất bản.
+Nếu phiên bản đã có audio, audio mới thay thế audio hiện tại của chính phiên bản đó.
+Việc kiểm tra trạng thái phiên bản và độ dài phải thực hiện trước khi gọi dịch vụ TTS để không phát sinh chi phí không cần thiết.
+Kịch bản chính
+1.	Người dùng chọn nội dung cần tạo audio.
+2.	Hệ thống hiển thị thông tin nội dung.
+3.	Hệ thống áp dụng giọng đọc mặc định của ngôn ngữ; người dùng có thể đổi giọng đọc (UC19).
+4.	Người dùng gửi yêu cầu tạo audio.
+5.	Hệ thống kiểm tra nội dung, giọng đọc, trạng thái phiên bản và độ dài văn bản so với giới hạn của dịch vụ TTS.
+6.	Hệ thống gửi văn bản đến Dịch vụ TTS.
+7.	Dịch vụ TTS xử lý và tạo file audio.
+8.	Dịch vụ TTS trả kết quả cho hệ thống.
+9.	Hệ thống lưu file audio và thông tin liên quan.
+10.	Hệ thống liên kết audio với phiên bản nội dung.
+11.	Hệ thống thông báo tạo audio thành công.
+Kịch bản phụ
+3.1.	Ngôn ngữ chưa có giọng đọc mặc định và người dùng chưa chọn giọng: Hệ thống yêu cầu lựa chọn.
+5.1.	Nội dung rỗng hoặc giọng đọc không hợp lệ: Hệ thống từ chối yêu cầu.
+5.2.	Phiên bản đang Chờ duyệt hoặc Đã xuất bản: Hệ thống từ chối và hướng dẫn tạo phiên bản mới theo UC14.
+5.3.	Phiên bản đã có audio: Hệ thống yêu cầu xác nhận thay thế audio hiện tại.
+5.4.	Văn bản vượt giới hạn độ dài đã biết của dịch vụ TTS: Hệ thống thông báo và gợi ý chia nhỏ văn bản, không gọi dịch vụ.
+7.1.	Dịch vụ TTS gặp lỗi: Hệ thống thông báo tạo audio thất bại.
+7.2.	Dịch vụ TTS báo văn bản vượt giới hạn độ dài: Hệ thống thông báo và gợi ý chia nhỏ văn bản.
+8.1.	Không nhận được file audio hợp lệ: Hệ thống không lưu kết quả.
+UC21 – Nghe thử audio
+Use Case ID
+UC21
+Tên Use Case
+Nghe thử audio
+Tác nhân
+Administrator, Content Manager
+Mô tả chức năng
+Cho phép người dùng nghe thử audio để kiểm tra chất lượng giọng đọc và nội dung trước khi sử dụng.
+Điều kiện tiên quyết
+Người dùng đã đăng nhập.
+Audio đã được tạo hoặc tải lên thành công.
+Yêu cầu
+Có thể nghe thử audio ở mọi trạng thái nội dung.
+Nghe thử không làm thay đổi trạng thái xuất bản.
+Chỉ người có quyền với POI mới được nghe thử audio tương ứng.
+Kịch bản chính
+1.	Người dùng truy cập nội dung có audio.
+2.	Người dùng chọn chức năng Nghe thử.
+3.	Hệ thống tải file audio.
+4.	Hệ thống hiển thị trình phát audio.
+5.	Người dùng nhấn Phát.
+6.	Hệ thống phát audio.
+7.	Người dùng nghe và kiểm tra chất lượng.
+8.	Người dùng dừng hoặc kết thúc nghe thử.
+Kịch bản phụ
+3.1.	File audio không tồn tại: Hệ thống thông báo lỗi.
+3.2.	File audio không thể tải: Hệ thống yêu cầu thử lại.
+5.1.	Audio không thể phát: Hệ thống thông báo lỗi.
+UC22 – Quản lý audio
+Use Case ID
+UC22
+Tên Use Case
+Quản lý audio
+Tác nhân
+Administrator, Content Manager
+Mô tả chức năng
+Cho phép người dùng tải lên audio thu sẵn, thay thế hoặc xóa audio của nội dung thuyết minh.
+Điều kiện tiên quyết
+Người dùng đã đăng nhập.
+Nội dung thuyết minh đã tồn tại.
+Phiên bản đang soạn ở trạng thái Bản nháp hoặc Bị từ chối.
+Content Manager có quyền với POI tương ứng.
+Yêu cầu
+Audio phải thuộc đúng nội dung và ngôn ngữ.
+File audio phải đúng định dạng và dung lượng cho phép.
+Mỗi audio gắn với một phiên bản nội dung; mỗi phiên bản có tối đa một audio hiện hành.
+Không thay đổi audio của phiên bản Chờ duyệt hoặc Đã xuất bản; muốn thay phải tạo phiên bản mới theo UC14.
+Việc đưa audio vào xuất bản thực hiện ở UC14 và UC15, không thực hiện tại UC này.
+Kịch bản chính
+1.	Người dùng truy cập chức năng Quản lý audio.
+2.	Hệ thống hiển thị audio hiện tại của nội dung.
+3.	Người dùng chọn thao tác:
+3.1. Tải lên audio thu sẵn.
+3.2. Thay thế audio hiện tại.
+3.3. Xóa audio.
+4.	Người dùng thực hiện thao tác đã chọn.
+5.	Hệ thống kiểm tra file và quyền hạn.
+6.	Hệ thống lưu thay đổi audio.
+7.	Hệ thống liên kết audio với phiên bản nội dung tương ứng.
+8.	Hệ thống thông báo kết quả.
+Kịch bản phụ
+4.1.1.	File không đúng định dạng: Hệ thống từ chối tải lên.
+4.1.2.	File vượt quá dung lượng cho phép: Hệ thống thông báo lỗi.
+5.1.	Người dùng không có quyền với POI: Hệ thống từ chối thao tác.
+5.2.	Phiên bản đang Chờ duyệt hoặc Đã xuất bản: Hệ thống từ chối và hướng dẫn tạo phiên bản mới theo UC14.
+5.3.	Audio không đúng ngôn ngữ của nội dung: Hệ thống từ chối.
+Nhóm 6 – Trải nghiệm khách tham quan
+Quy tắc chung: Visitor sử dụng trang web trên trình duyệt, không cài đặt ứng dụng. Tất cả Use Case trong nhóm này không yêu cầu Visitor đăng nhập. Khi nội dung hoặc tên không có ở ngôn ngữ Visitor chọn, hệ thống tự động dùng tiếng Anh.
+UC23 – Truy cập trang web thuyết minh
+Use Case ID
+UC23
+Tên Use Case
+Truy cập trang web thuyết minh
+Tác nhân
+Visitor
+Mô tả chức năng
+Cho phép khách tham quan mở trang web thuyết minh bằng trình duyệt, qua đường dẫn hoặc QR Code, không cần cài đặt ứng dụng.
+Điều kiện tiên quyết
+Visitor có thiết bị có trình duyệt và kết nối Internet.
+Yêu cầu
+Không yêu cầu đăng nhập hoặc cài đặt ứng dụng.
+Giao diện hiển thị tốt trên điện thoại.
+Trang phải tải được dữ liệu cần thiết.
+Hệ thống ghi nhận lượt truy cập ẩn danh.
+Kịch bản chính
+1.	Visitor mở trang web thuyết minh.
+2.	Hệ thống khởi tạo trang.
+3.	Hệ thống kiểm tra ngôn ngữ đã lưu trên thiết bị.
+4.	Hệ thống tải cấu hình và dữ liệu cần thiết.
+5.	Hệ thống hiển thị trang chủ.
+6.	Hệ thống ghi nhận lượt truy cập.
+7.	Visitor bắt đầu sử dụng.
+Kịch bản phụ
+3.1.	Chưa có ngôn ngữ được lưu: Hệ thống dùng ngôn ngữ của trình duyệt nếu được hỗ trợ, nếu không thì dùng tiếng Anh.
+4.1.	Không thể kết nối máy chủ: Hệ thống thông báo lỗi kết nối.
+4.2.	Không tải được dữ liệu: Hệ thống thông báo và cho phép thử lại.
+UC24 – Chọn ngôn ngữ sử dụng
+Use Case ID
+UC24
+Tên Use Case
+Chọn ngôn ngữ sử dụng
+Tác nhân
+Visitor
+Mô tả chức năng
+Cho phép Visitor lựa chọn ngôn ngữ hiển thị và ngôn ngữ thuyết minh ưu tiên khi sử dụng trang web.
+Điều kiện tiên quyết
+Visitor đã truy cập trang web.
+Yêu cầu
+Chỉ hiển thị ngôn ngữ đang hoạt động.
+Lưu lựa chọn trên thiết bị.
+Không yêu cầu đăng nhập.
+Chuỗi giao diện chưa có bản dịch được hiển thị bằng tiếng Anh.
+Kịch bản chính
+1.	Visitor truy cập chức năng Chọn ngôn ngữ.
+2.	Hệ thống hiển thị danh sách ngôn ngữ được hỗ trợ.
+3.	Visitor chọn ngôn ngữ mong muốn.
+4.	Hệ thống lưu lựa chọn trên thiết bị.
+5.	Hệ thống cập nhật ngôn ngữ giao diện và ngôn ngữ ưu tiên.
+6.	Hệ thống thông báo lựa chọn thành công.
+Kịch bản phụ
+2.1.	Không tải được danh sách ngôn ngữ: Hệ thống thông báo lỗi.
+3.1.	Ngôn ngữ đã bị tắt: Hệ thống yêu cầu chọn ngôn ngữ khác.
+4.1.	Không thể lưu lựa chọn (ví dụ trình duyệt chặn lưu trữ): Hệ thống chỉ áp dụng lựa chọn trong phiên hiện tại.
+UC25 – Duyệt và chọn địa điểm tham quan
+Use Case ID
+UC25
+Tên Use Case
+Duyệt và chọn địa điểm tham quan
+Tác nhân
+Visitor
+Mô tả chức năng
+Cho phép Visitor xem danh sách các địa điểm đang hoạt động và lựa chọn địa điểm muốn tham quan.
+Điều kiện tiên quyết
+Visitor đã truy cập trang web.
+Yêu cầu
+Chỉ hiển thị địa điểm đang hoạt động.
+Tên và mô tả ngắn của địa điểm hiển thị theo ngôn ngữ đã chọn; nếu thiếu thì dùng tiếng Anh.
+Kịch bản chính
+1.	Visitor truy cập danh sách địa điểm.
+2.	Hệ thống tải danh sách địa điểm đang hoạt động.
+3.	Hệ thống hiển thị thông tin địa điểm.
+4.	Visitor chọn một địa điểm.
+5.	Hệ thống tải thông tin chi tiết địa điểm.
+6.	Hệ thống hiển thị địa điểm được chọn.
+Kịch bản phụ
+2.1.	Không có địa điểm đang hoạt động: Hệ thống hiển thị thông báo.
+4.1.	Địa điểm đã ngừng hoạt động: Hệ thống thông báo không thể truy cập.
+5.1.	Không thể tải thông tin: Hệ thống thông báo lỗi kết nối.
+UC26 – Xem danh sách POI
+Use Case ID
+UC26
+Tên Use Case
+Xem danh sách POI
+Tác nhân
+Visitor
+Mô tả chức năng
+Cho phép Visitor xem danh sách các điểm thuyết minh thuộc địa điểm đã chọn.
+Điều kiện tiên quyết
+Visitor đã truy cập trang web.
+Địa điểm đã được chọn và đang hoạt động.
+Yêu cầu
+Chỉ hiển thị POI đang hoạt động.
+Tên và mô tả ngắn của POI hiển thị theo ngôn ngữ đã chọn; nếu thiếu thì dùng tiếng Anh.
+Nếu sau khi lọc không còn POI đang hoạt động, hiển thị như địa điểm chưa có POI.
+Kịch bản chính
+1.	Visitor chọn một địa điểm.
+2.	Hệ thống tải danh sách POI thuộc địa điểm.
+3.	Hệ thống lọc các POI đang hoạt động.
+4.	Hệ thống hiển thị danh sách POI.
+5.	Visitor chọn một POI.
+6.	Hệ thống chuyển đến thông tin chi tiết POI.
+Kịch bản phụ
+2.1.	Địa điểm không có POI: Hệ thống hiển thị thông báo.
+3.1.	POI đã ngừng hoạt động: Hệ thống không hiển thị POI đó.
+5.1.	POI không tồn tại: Hệ thống thông báo lỗi.
+UC27 – Xem nội dung thuyết minh
+Use Case ID
+UC27
+Tên Use Case
+Xem nội dung thuyết minh
+Tác nhân
+Visitor
+Mô tả chức năng
+Cho phép Visitor xem văn bản thuyết minh đã xuất bản của một POI theo ngôn ngữ đang chọn.
+Điều kiện tiên quyết
+Visitor đã chọn POI đang hoạt động.
+POI có nội dung đã xuất bản.
+Yêu cầu
+Chỉ hiển thị nội dung Đã xuất bản.
+Ưu tiên ngôn ngữ Visitor đã chọn.
+Nếu không có nội dung ở ngôn ngữ được chọn, tự động dùng tiếng Anh.
+Kịch bản chính
+1.	Visitor chọn một POI.
+2.	Hệ thống kiểm tra ngôn ngữ Visitor đã chọn.
+3.	Hệ thống tìm nội dung đã xuất bản của POI theo ngôn ngữ đó.
+4.	Hệ thống tải nội dung thuyết minh.
+5.	Hệ thống hiển thị văn bản thuyết minh.
+6.	Visitor đọc nội dung.
+Kịch bản phụ
+1.1.	POI đã ngừng hoạt động: Hệ thống thông báo POI không khả dụng.
+3.1.	Không có nội dung theo ngôn ngữ đã chọn: Hệ thống tự động dùng nội dung tiếng Anh và thông báo cho Visitor.
+3.2.	Không có nội dung tiếng Anh: Hệ thống thông báo chưa có nội dung thuyết minh.
+4.1.	Không thể tải nội dung: Hệ thống thông báo lỗi.
+UC28 – Nghe thuyết minh
+Use Case ID
+UC28
+Tên Use Case
+Nghe thuyết minh
+Tác nhân
+Visitor
+Mô tả chức năng
+Cho phép Visitor phát audio thuyết minh của POI theo ngôn ngữ đã chọn.
+Điều kiện tiên quyết
+Visitor đã chọn POI.
+Nội dung đã được xuất bản.
+Có audio hợp lệ tương ứng với phiên bản nội dung.
+Yêu cầu
+Chỉ phát audio thuộc nội dung đã xuất bản.
+Nội dung đã xuất bản luôn có audio hợp lệ (điều kiện xuất bản); lỗi audio chỉ phát sinh do sự cố tệp hoặc kết nối.
+Kịch bản chính
+1.	Visitor truy cập thông tin chi tiết POI.
+2.	Visitor chọn chức năng Nghe thuyết minh.
+3.	Hệ thống kiểm tra nội dung và ngôn ngữ.
+4.	Hệ thống tải audio tương ứng.
+5.	Hệ thống hiển thị trình phát audio.
+6.	Visitor nhấn Phát.
+7.	Hệ thống phát audio.
+8.	Hệ thống ghi nhận lượt nghe (mỗi lần Visitor bắt đầu phát audio của một POI).
+9.	Hệ thống lưu thông tin lịch sử nghe trên thiết bị.
+Kịch bản phụ
+3.1.	Không có nội dung ở ngôn ngữ được chọn: Hệ thống tự động dùng nội dung và audio tiếng Anh.
+3.2.	Không có nội dung tiếng Anh: Hệ thống thông báo chưa có nội dung thuyết minh.
+4.2.	Audio không tải được hoặc không phát được: Hệ thống thông báo lỗi, cho phép thử lại và vẫn hiển thị văn bản thuyết minh.
+7.1.	Audio không thể phát: Hệ thống thông báo lỗi trình phát.
+UC29 – Điều khiển trình phát audio
+Use Case ID
+UC29
+Tên Use Case
+Điều khiển trình phát audio
+Tác nhân
+Visitor
+Mô tả chức năng
+Cho phép Visitor điều khiển quá trình nghe audio gồm phát, tạm dừng, tiếp tục, tua và dừng.
+Điều kiện tiên quyết
+Visitor đã truy cập POI có audio hợp lệ.
+Trình phát audio đã được khởi tạo.
+Yêu cầu
+Các thao tác điều khiển phải cập nhật trạng thái phát audio chính xác.
+Kịch bản chính
+1.	Visitor mở trình phát audio.
+2.	Hệ thống hiển thị các nút điều khiển.
+3.	Visitor chọn một thao tác:
+3.1. Phát audio.
+3.2. Tạm dừng audio.
+3.3. Tiếp tục audio.
+3.4. Tua đến vị trí mong muốn.
+3.5. Dừng audio.
+4.	Hệ thống thực hiện thao tác tương ứng.
+5.	Hệ thống cập nhật trạng thái và thời gian phát, đồng thời ghi nhận thời lượng nghe thực tế.
+6.	Visitor tiếp tục nghe hoặc kết thúc.
+Kịch bản phụ
+3.1.1.	Audio chưa tải hoàn tất: Hệ thống tiếp tục tải trước khi phát.
+3.3.1.	Audio đã kết thúc: Hệ thống phát lại từ đầu nếu Visitor yêu cầu.
+3.4.1.	Vị trí tua không hợp lệ: Hệ thống giữ vị trí phát hiện tại.
+3.5.1.	Audio không thể dừng: Hệ thống thông báo lỗi.
+UC30 – Chuyển ngôn ngữ thuyết minh
+Use Case ID
+UC30
+Tên Use Case
+Chuyển ngôn ngữ thuyết minh
+Tác nhân
+Visitor
+Mô tả chức năng
+Cho phép Visitor thay đổi ngôn ngữ nội dung và audio của POI đang xem hoặc nghe.
+Điều kiện tiên quyết
+Visitor đang xem hoặc nghe một POI.
+POI đang hoạt động.
+Yêu cầu
+Chỉ hiển thị ngôn ngữ đang hoạt động.
+Ưu tiên nội dung đã xuất bản.
+Lưu ngôn ngữ được chọn trên thiết bị.
+Kịch bản chính
+1.	Visitor đang xem hoặc nghe nội dung của POI.
+2.	Visitor chọn chức năng Chuyển ngôn ngữ.
+3.	Hệ thống hiển thị danh sách ngôn ngữ.
+4.	Visitor chọn ngôn ngữ mới.
+5.	Hệ thống kiểm tra nội dung đã xuất bản theo ngôn ngữ mới.
+6.	Hệ thống tải nội dung và audio tương ứng.
+7.	Hệ thống cập nhật giao diện và trình phát audio.
+8.	Hệ thống lưu ngôn ngữ mới trên thiết bị.
+Kịch bản phụ
+4.1.	Ngôn ngữ đã bị tắt: Hệ thống yêu cầu chọn lại.
+5.1.	POI không có nội dung theo ngôn ngữ mới: Hệ thống tự động dùng tiếng Anh và thông báo cho Visitor.
+6.1.	Audio của ngôn ngữ mới không tải được: Hệ thống vẫn hiển thị văn bản và thông báo lỗi audio.
+6.2.	Không tải được nội dung: Hệ thống giữ nguyên nội dung trước đó.
+UC31 – Xem lịch sử nghe trên thiết bị
+Use Case ID
+UC31
+Tên Use Case
+Xem lịch sử nghe trên thiết bị
+Tác nhân
+Visitor
+Mô tả chức năng
+Cho phép Visitor xem danh sách các POI đã nghe trên thiết bị hiện tại.
+Điều kiện tiên quyết
+Visitor đã truy cập trang web.
+Yêu cầu
+Lịch sử được lưu bằng Local Storage.
+Không yêu cầu đăng nhập.
+Không đồng bộ lịch sử giữa các thiết bị.
+Lịch sử có thể bị mất khi xóa dữ liệu trình duyệt.
+Kịch bản chính
+1.	Visitor truy cập chức năng Lịch sử nghe.
+2.	Hệ thống đọc dữ liệu lịch sử từ Local Storage.
+3.	Hệ thống hiển thị danh sách POI đã nghe.
+4.	Visitor chọn một POI trong lịch sử.
+5.	Hệ thống kiểm tra trạng thái POI và nội dung.
+6.	Hệ thống mở thông tin POI tương ứng.
+Kịch bản phụ
+2.1.	Chưa có lịch sử nghe: Hệ thống hiển thị danh sách trống.
+2.2.	Không đọc được Local Storage: Hệ thống thông báo lỗi.
+5.1.	POI đã ngừng hoạt động: Hệ thống thông báo không thể truy cập.
+5.2.	Nội dung đã bị gỡ khỏi xuất bản: Hệ thống thông báo nội dung không khả dụng.
+Nhóm 7 – QR Code và thống kê
+UC32 – Quản lý QR Code cho POI
+Use Case ID
+UC32
+Tên Use Case
+Quản lý QR Code cho POI
+Tác nhân
+Administrator, Content Manager
+Mô tả chức năng
+Cho phép người dùng tạo, xem, tải xuống, cập nhật hoặc tạo lại QR Code cho POI.
+Điều kiện tiên quyết
+Người dùng đã đăng nhập.
+POI đã tồn tại.
+Content Manager có quyền quản lý POI tương ứng.
+Yêu cầu
+Mỗi QR Code liên kết với một POI.
+QR Code chứa liên kết truy cập trực tiếp đến POI.
+Việc sửa nội dung thuyết minh không làm thay đổi QR Code đã tạo.
+Kịch bản chính
+1.	Người dùng truy cập chức năng Quản lý QR Code.
+2.	Hệ thống hiển thị danh sách POI.
+3.	Người dùng chọn POI cần quản lý QR Code.
+4.	Hệ thống kiểm tra QR Code hiện tại.
+5.	Người dùng chọn một thao tác:
+5.1. Tạo QR Code mới.
+5.2. Xem QR Code.
+5.3. Tải QR Code.
+5.4. Cập nhật hoặc tạo lại QR Code.
+6.	Hệ thống thực hiện thao tác tương ứng.
+7.	Hệ thống lưu QR Code và liên kết với POI.
+8.	Hệ thống thông báo kết quả.
+Kịch bản phụ
+3.1.	POI không tồn tại: Hệ thống thông báo lỗi.
+3.2.	Content Manager không có quyền quản lý POI: Hệ thống từ chối truy cập.
+5.1.	QR Code đã tồn tại: Hệ thống thông báo và cho phép xem hoặc tạo lại.
+5.2.	Chọn Xem hoặc Tải khi POI chưa có QR Code: Hệ thống thông báo và đề nghị tạo mới.
+6.1.	Không tạo được QR Code: Hệ thống thông báo lỗi.
+6.2.	Không tải được QR Code: Hệ thống cho phép thử lại.
+UC33 – Quét QR Code và truy cập POI
+Use Case ID
+UC33
+Tên Use Case
+Quét QR Code và truy cập POI
+Tác nhân
+Visitor
+Mô tả chức năng
+Cho phép Visitor quét QR Code tại địa điểm tham quan bằng camera của thiết bị để mở trực tiếp trang web thông tin POI tương ứng.
+Điều kiện tiên quyết
+Visitor có thiết bị có camera và trình duyệt.
+QR Code hợp lệ và liên kết với POI trong hệ thống.
+Yêu cầu
+Không yêu cầu đăng nhập hoặc cài đặt ứng dụng.
+Ưu tiên ngôn ngữ Visitor đã chọn; nếu chưa có thì dùng ngôn ngữ của trình duyệt nếu được hỗ trợ, nếu không thì dùng tiếng Anh.
+Chỉ hiển thị POI đang hoạt động và nội dung đã xuất bản.
+Hệ thống ghi nhận lượt quét QR Code ẩn danh.
+Kịch bản chính
+1.	Visitor dùng camera thiết bị quét QR Code tại điểm tham quan.
+2.	Thiết bị mở liên kết của QR Code trong trình duyệt.
+3.	Hệ thống xác định POI từ liên kết.
+4.	Hệ thống kiểm tra trạng thái POI.
+5.	Hệ thống xác định ngôn ngữ hiển thị (đã lưu trên thiết bị, ngôn ngữ trình duyệt hoặc tiếng Anh).
+6.	Hệ thống tải nội dung đã xuất bản theo ngôn ngữ đó.
+7.	Hệ thống hiển thị trang thông tin POI.
+8.	Hệ thống ghi nhận lượt quét QR Code.
+9.	Visitor xem hoặc nghe thuyết minh.
+Kịch bản phụ
+3.1.	Liên kết không hợp lệ hoặc POI không tồn tại: Hệ thống thông báo POI không tồn tại.
+4.1.	POI đã ngừng hoạt động: Hệ thống thông báo POI không khả dụng.
+6.1.	Không có nội dung theo ngôn ngữ đã chọn: Hệ thống tự động dùng tiếng Anh và thông báo cho Visitor.
+6.2.	POI chưa có nội dung đã xuất bản (kể cả tiếng Anh): Hệ thống thông báo nội dung chưa khả dụng.
+UC34 – Xem thống kê hoạt động
+Use Case ID
+UC34
+Tên Use Case
+Xem thống kê hoạt động
+Tác nhân
+Administrator
+Mô tả chức năng
+Cho phép Administrator theo dõi tình hình sử dụng hệ thống thông qua các số liệu thống kê về truy cập, lượt nghe, POI, ngôn ngữ và QR Code.
+Điều kiện tiên quyết
+Administrator đã đăng nhập.
+Yêu cầu
+Dữ liệu thống kê được ghi nhận ẩn danh.
+Cho phép lọc theo khoảng thời gian.
+Số liệu phải được tổng hợp từ dữ liệu hoạt động thực tế.
+Lượt truy cập: mỗi lần Visitor mở trang web (UC23). Lượt quét QR: mỗi lần mở trang POI qua QR Code (UC33).
+Lượt nghe: mỗi lần Visitor bắt đầu phát audio của một POI (UC28). Thời lượng nghe: tổng thời gian phát thực tế (UC29).
+Số liệu theo POI và địa điểm hiển thị tên tiếng Anh.
+Kịch bản chính
+1.	Administrator truy cập chức năng Thống kê hoạt động.
+2.	Hệ thống hiển thị trang tổng quan thống kê.
+3.	Hệ thống tổng hợp và hiển thị các chỉ số:
+3.1. Tổng lượt truy cập trang web.
+3.2. Tổng lượt nghe audio.
+3.3. Lượt nghe theo địa điểm.
+3.4. Lượt nghe theo POI.
+3.5. Lượt nghe theo ngôn ngữ.
+3.6. Tổng thời lượng nghe.
+3.7. Lượt quét QR Code theo POI.
+4.	Administrator chọn khoảng thời gian cần thống kê.
+5.	Hệ thống lọc dữ liệu theo khoảng thời gian.
+6.	Hệ thống cập nhật kết quả thống kê.
+7.	Administrator xem và phân tích số liệu.
+Kịch bản phụ
+3.1.	Chưa có dữ liệu hoạt động: Hệ thống hiển thị giá trị bằng 0 hoặc thông báo chưa có dữ liệu.
+4.1.	Khoảng thời gian không hợp lệ: Hệ thống yêu cầu chọn lại.
+5.1.	Không tìm thấy dữ liệu trong khoảng thời gian: Hệ thống hiển thị kết quả trống.
+6.1.	Không thể tải dữ liệu thống kê: Hệ thống thông báo lỗi.
+UC35 – Xem bản đồ
+Use Case ID
+UC35
+Tên Use Case
+Xem bản đồ
+Tác nhân
+Visitor (Admin xem bản đồ giống người dùng)
+Mô tả chức năng
+Cho phép Visitor xem bản đồ các địa điểm tham quan du lịch có tọa độ, xem thông tin tóm tắt và điều hướng nhanh đến trang chi tiết địa điểm để nghe thuyết minh. Administrator xem bản đồ giống người dùng (không có use case riêng).
+Điều kiện tiên quyết
+Hệ thống đã có ít nhất một địa điểm có tọa độ.
+Yêu cầu
+Chỉ hiển thị marker cho các địa điểm đang hoạt động và có tọa độ (vĩ độ, kinh độ).Địa điểm chưa có tọa độ: không hiển thị trên bản đồ, vẫn hiển thị bình thường ở danh sách địa điểm.Khi người dùng bấm vào marker, hiển thị popup gồm tên địa điểm, ảnh đại diện và nút "Nghe thuyết minh".Nút "Nghe thuyết minh" dẫn tới trang chi tiết địa điểm.Không tải được bản đồ: báo lỗi và vẫn cho người dùng xem danh sách địa điểm.Admin xem bản đồ giống người dùng (không có use case riêng).
+Kịch bản chính
+1.Người dùng mở trang bản đồ.
+2.Hệ thống tải danh sách địa điểm có tọa độ.
+3.Hệ thống hiển thị marker của các địa điểm trên bản đồ.
+4.Người dùng bấm vào một marker trên bản đồ.
+5.Hệ thống hiển thị popup gồm tên địa điểm, ảnh đại diện và nút "Nghe thuyết minh".
+6.Người dùng bấm nút "Nghe thuyết minh".
+7.Hệ thống chuyển hướng người dùng tới trang chi tiết địa điểm.
+Kịch bản phụ
+2.1.Địa điểm chưa có tọa độ: Không hiển thị trên bản đồ, vẫn hiển thị bình thường ở danh sách địa điểm.
+2.2.Không tải được bản đồ: Hệ thống thông báo lỗi và vẫn cho người dùng xem danh sách địa điểm.
+3. Quy ước đã chuẩn hóa
+Nội dung
+Quy ước cuối cùng
+Nền tảng của Visitor
+Trang web trên trình duyệt, không cài đặt ứng dụng, không đăng nhập.
+Ngôn ngữ dự phòng
+Tiếng Anh, cố định. Không hỗ trợ ngôn ngữ hiếm.
+Tên, mô tả địa điểm và POI
+Đa ngôn ngữ. Bắt buộc có tiếng Anh, thiếu thì dùng tiếng Anh.
+Giọng đọc
+Administrator đặt giọng mặc định cho mỗi ngôn ngữ (UC11); người dùng đổi cho từng nội dung khi cần (UC19).
+Thông báo
+Không có kênh thông báo riêng. Kết quả kiểm duyệt hiển thị qua trạng thái trong danh sách nội dung (UC12, UC15).
+Xóa nội dung
+Chỉ xóa được phiên bản đang soạn. Nội dung đã từng xuất bản chỉ gỡ xuất bản.
+Đăng ký tài khoản
+Không có. Tài khoản do Administrator cấp (UC05).
+Quản lý tài khoản
+Chỉ Administrator.
+Phạm vi Content Manager
+Theo địa điểm do Administrator phân công.
+Quản lý địa điểm
+Chỉ Administrator.
+Quản lý POI
+Administrator; Content Manager trong phạm vi được phân công.
+Quản lý ngôn ngữ
+Chỉ Administrator.
+Tạo, cập nhật nội dung
+Administrator và Content Manager (trong phạm vi). Luôn lưu ở Bản nháp.
+Gửi duyệt
+Content Manager, thực hiện trong UC14, không có use case riêng. Áp dụng cho phiên bản Bản nháp hoặc Bị từ chối, chỉ khi đủ điều kiện xuất bản.
+Xuất bản trực tiếp
+Administrator, thực hiện trong UC14, cho phiên bản Bản nháp hoặc Bị từ chối.
+Kiểm duyệt nội dung
+Chỉ Administrator. Phê duyệt đồng nghĩa với xuất bản ngay (UC15).
+Gỡ xuất bản, xuất bản lại
+Chỉ Administrator (UC16).
+Dịch tự động, rà soát bản dịch
+Administrator và Content Manager (trong phạm vi).
+Chọn giọng đọc, tạo audio, quản lý audio
+Administrator và Content Manager (trong phạm vi), chỉ trên phiên bản Bản nháp hoặc Bị từ chối.
+Quản lý QR Code
+Administrator và Content Manager (trong phạm vi).
+Trải nghiệm tham quan
+Visitor, không đăng nhập.
+Xem thống kê
+Chỉ Administrator.
+Bản đồ điểm du lịch
+Visitor và Administrator xem bản đồ giống nhau; Administrator không có UC riêng. Địa điểm hiển thị marker trên bản đồ khi có tọa độ.
+Tọa độ và Geocoding
+Hệ thống tự động gọi dịch vụ geocoding đổi địa chỉ thành tọa độ khi thêm hoặc sửa địa điểm. Khi geocoding lỗi hoặc sai vị trí, Administrator được phép sửa địa chỉ hoặc chấm tay vị trí trên bản đồ. Địa điểm chưa có tọa độ không hiện trên bản đồ nhưng vẫn hiện ở danh sách.
+4. Lưu ý nghiệp vụ
+Xuất bản không tách thành bước riêng. Phê duyệt ở UC15 và xuất bản trực tiếp của Administrator ở UC14 đều thực hiện cùng Quy trình xuất bản (mục 1.4), nên không có use case xuất bản độc lập. Gỡ xuất bản là mục tiêu khác nên có UC16.
+Bản dịch dùng chung quy trình với nội dung gốc. Bản dịch tự động bắt đầu ở Bản nháp. Content Manager gửi duyệt, Administrator có thể xuất bản trực tiếp, theo UC14 và UC15.
+Audio gắn với phiên bản nội dung. Phiên bản Chờ duyệt và Đã xuất bản không đổi audio. Điều kiện xuất bản yêu cầu audio hợp lệ, nên Visitor luôn có audio khi nội dung đã xuất bản.
+Khi bản nguồn thay đổi. Sau khi phiên bản mới của nội dung nguồn được xuất bản, các bản dịch bị gắn dấu Cần rà soát. Bản dịch đang xuất bản vẫn hiển thị cho đến khi có phiên bản thay thế.
+Phân quyền kiểm tra ở backend. Không chỉ ẩn chức năng trên giao diện. Backend kiểm tra địa điểm của POI có thuộc phạm vi phân công của Content Manager hay không trước mọi thao tác.
+Ba thao tác ngôn ngữ của Visitor. UC24: chọn ngôn ngữ ban đầu. UC30: chuyển ngôn ngữ khi đang xem hoặc nghe POI. UC33: khi quét QR Code, dùng ngôn ngữ đã chọn, ngôn ngữ của trình duyệt hoặc tiếng Anh.
+Tiếng Anh là điểm tựa của hệ thống đa ngôn ngữ. Mọi POI nên có nội dung tiếng Anh đã xuất bản, vì đó là nội dung dự phòng. Nếu thiếu, Visitor ở ngôn ngữ chưa có nội dung sẽ gặp thông báo chưa có nội dung (UC27).
+Bản dịch phải được người rà soát. Bản dịch máy luôn mang dấu Cần rà soát và không thể gửi duyệt hoặc xuất bản cho đến khi người dùng xác nhận rà soát (UC18).
+Thông báo lỗi xác thực. UC01 và UC04 không tiết lộ tài khoản hoặc email có tồn tại hay không.
+5. Yêu cầu phi chức năng và tham số cấu hình
+5.1. Yêu cầu phi chức năng
+Nền tảng: trang web Visitor hiển thị tốt trên điện thoại, chạy trên các trình duyệt phổ biến bản gần đây. Trang quản trị dùng trên máy tính.
+Mạng yếu: file audio phải nhẹ, phát được khi mới tải một phần. Phiên bản này không hỗ trợ nghe khi mất mạng.
+Giao diện Visitor được bản địa hóa cho các ngôn ngữ hỗ trợ; chuỗi thiếu bản dịch hiển thị bằng tiếng Anh.
+Bảo mật: truyền dữ liệu qua HTTPS, lưu mật khẩu dạng băm, kiểm tra quyền ở backend cho mọi thao tác quản trị.
+Quyền riêng tư: dữ liệu thống kê ẩn danh, không thu thập thông tin định danh của Visitor.
+Dịch vụ ngoài lỗi hoặc chậm không làm ngừng các chức năng khác; người dùng có thể thử lại.Hệ thống phụ thuộc vào dịch vụ bản đồ/geocoding bên ngoài để chuyển đổi địa chỉ thành tọa độ và hiển thị lớp bản đồ. Khi dịch vụ bản đồ bên ngoài gặp sự cố, hệ thống thông báo lỗi và vẫn đảm bảo người dùng xem được danh sách địa điểm.
+5.2. Tham số cấu hình (giá trị mặc định đề xuất, cần xác nhận)
+Tham số
+Giá trị đề xuất
+Dùng ở
+Số lần đăng nhập sai liên tiếp trước khi khóa tạm
+5 lần
+UC01
+Thời gian khóa tạm
+15 phút
+UC01
+Thời gian phiên không hoạt động
+30 phút
+UC01, UC02
+Thời hạn mã hoặc liên kết khôi phục mật khẩu
+30 phút
+UC04
+Định dạng audio tải lên
+MP3
+UC22
+Dung lượng audio tối đa
+20 MB
+UC22
+Độ dài văn bản tối đa mỗi nội dung
+Theo giới hạn của dịch vụ dịch và TTS được chọn
+UC13, UC17, UC20
+6. Câu hỏi mở
+1. Địa điểm đã có sẵn trước khi có bản đồ: có chạy geocoding hàng loạt một lần không?
+2. Dịch vụ bản đồ/geocoding sẽ dùng là gì (ảnh hưởng chi phí và giới hạn gọi API)?
