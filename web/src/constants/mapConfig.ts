@@ -5,19 +5,17 @@
  * @activityDiagram Hiển thị bản đồ số du lịch (UC35, UC07).
  * 
  * @customization Điểm cấu hình & Tùy biến nhanh:
- *  - Đổi nhà cung cấp bản đồ: Thay `TILE_LAYER_URL` (mặc định dùng CartoDB Voyager CDN tốc độ cao, không bị chặn bởi các nhà mạng VN).
+ *  - Đổi nhà cung cấp bản đồ: Thay `TILE_LAYER_URL`.
  *  - Đổi tọa độ trung tâm mặc định: Thay `DEFAULT_CENTER_LAT` và `DEFAULT_CENTER_LNG`.
  */
 
 // ==================== CẤU HÌNH BẢN ĐỒ SỐ DU LỊCH ====================
 export const MAP_CONFIG = {
-  // CartoDB Voyager: Bản đồ du lịch sắc nét, máy chủ CDN Châu Á (Hong Kong), miễn phí và không bị chặn IP tại Việt Nam
-  TILE_LAYER_URL: 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
-  SUBDOMAINS: 'abcd',
-  ATTRIBUTION: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
-
-  // Tile Server dự phòng (ESRI World Street Map) nếu cần
-  FALLBACK_TILE_URL: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}',
+  // Máy chủ OSM Humanitarian (HOT) qua CDN Châu Âu (OSM France): 
+  // Hoàn toàn miễn phí, KHÔNG CẦN API KEY, KHÔNG CÓ WATERMARK, tải nhanh và không bị các nhà mạng tại VN chặn
+  TILE_LAYER_URL: 'https://{s}.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png',
+  SUBDOMAINS: 'abc',
+  ATTRIBUTION: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, Tiles style by <a href="https://www.hotosm.org/">HOT</a>',
 
   // Tọa độ trung tâm mặc định (Thủ đô Hà Nội)
   DEFAULT_CENTER_LAT: 21.028511,
