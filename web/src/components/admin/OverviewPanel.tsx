@@ -47,6 +47,7 @@ export function OverviewPanel({ items, pois, voices, token }: OverviewPanelProps
 
   const published = items.filter((item) => item.status === 'Đã xuất bản').length;
   const review = items.filter((item) => item.status === 'Chờ duyệt').length;
+  // const view = analytics?.activeVisitors ?? 0;
 
   return (
     <section className="overview-panel">

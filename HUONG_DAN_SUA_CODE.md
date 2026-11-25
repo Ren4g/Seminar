@@ -24,7 +24,8 @@ Seminar/web/src/
 │
 ├── utils/                             # HÀM TIỆN ÍCH DÙNG CHUNG
 │   ├── formatters.ts                  # Hàm formatTime (phút:giây), languageName (tên thứ tiếng), mapContent
-│   └── session.ts                     # Hàm safeRandomUUID và getVisitorSessionKey (phiên ẩn danh)
+│   ├── session.ts                     # Hàm safeRandomUUID và getVisitorSessionKey (phiên ẩn danh)
+│   └── mapIcons.ts                    # Biểu tượng ghim Marker Leaflet tùy biến (Ghim Visitor và Ghim chấm tọa độ)
 │
 ├── hooks/                             # LOGIC & KẾT NỐI API RIÊNG BIỆT
 │   ├── useVisitorSession.ts           # Gửi heartbeat khách online và ghi nhận Analytics (PAGE_VIEW, QR_OPEN)
@@ -49,7 +50,9 @@ Seminar/web/src/
 │   │   ├── VisitorAudioPlayer.tsx     # Trình phát audio chính: Play/Pause, tua ±15s, thanh trượt, đổi tốc độ
 │   │   ├── VisitorStickyPlayer.tsx    # Thanh mini player ghim dưới đáy màn hình khi cuộn trang
 │   │   ├── VisitorTranscript.tsx      # Khung bản chép lời (Transcript) có nút bấm mở rộng/thu gọn (+/-)
-│   │   └── VisitorDetailActions.tsx   # Gợi ý điểm tiếp theo, nút Chia sẻ (Web Share) và Báo lỗi nội dung
+│   │   ├── VisitorDetailActions.tsx   # Gợi ý điểm tiếp theo, nút Chia sẻ (Web Share) và Báo lỗi nội dung
+│   │   ├── VisitorMapToolbar.tsx      # Thanh công cụ bản đồ: Đếm số địa điểm có tọa độ và nút xem danh sách
+│   │   └── VisitorMapPopup.ts         # Khởi tạo Popup Leaflet chi tiết điểm và nút nghe thuyết minh
 │   │
 │   └── admin/                         # CÁC THÀNH PHẦN GIAO DIỆN QUẢN TRỊ VIÊN
 │       ├── AdminSidebar.tsx           # Thanh menu bên trái (6 tab, đếm bài chờ duyệt, đăng xuất)

@@ -1,23 +1,26 @@
+/**
+ * @file LocationMapPicker.tsx
+ * @description Bản đồ số Leaflet cho phép Admin kéo ghim hoặc nhấp chuột để chấm tay tọa độ (Vĩ độ - Latitude, Kinh độ - Longitude) cho khu di tích.
+ * @screen Tab "Địa điểm & POI" (Form tạo địa điểm và Modal chỉnh sửa địa điểm).
+ * @activityDiagram Bước "UC07 - Quản lý địa điểm: Thiết lập và hiệu chỉnh tọa độ địa lý di tích".
+ * 
+ * @customization Điểm cấu hình & Tùy biến nhanh:
+ *  - Tọa độ trung tâm mặc định (Hà Nội): Biến `DEFAULT_LAT`, `DEFAULT_LNG` bên dưới.
+ *  - Mức phóng to (Zoom): Biến `DEFAULT_ZOOM`, `ZOOM_WITH_COORDS`.
+ *  - Nhà cung cấp bản đồ nền (Tile Server): Biến `TILE_LAYER_URL`.
+ */
+
 import { useEffect, useRef } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
+import { pickerIcon } from './utils/mapIcons';
 
-const pickerIcon = L.divIcon({
-  className: 'custom-map-marker-container',
-  html: `
-    <div class="custom-marker-pin is-picker">
-      <div class="pin-icon">
-        <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
-          <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
-        </svg>
-      </div>
-      <div class="pin-shadow"></div>
-    </div>
-  `,
-  iconSize: [36, 44],
-  iconAnchor: [18, 44],
-  popupAnchor: [0, -44],
-});
+// ==================== CẤU HÌNH BẢN ĐỒ CHẤM TỌA ĐỘ ====================
+const DEFAULT_LAT = 21.028511; // Tọa độ trung tâm mặc định (Hà Nội)
+const DEFAULT_LNG = 105.854444;
+const DEFAULT_ZOOM = 13;
+const ZOOM_WITH_COORDS = 16;
+const TILE_LAYER_URL = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
 
 interface LocationMapPickerProps {
   latitude: number | null | undefined;
@@ -26,27 +29,25 @@ interface LocationMapPickerProps {
   height?: number | string;
 }
 
+// [TÍNH NĂNG: Bản đồ chấm tay tọa độ cho Admin]
 export function LocationMapPicker({ latitude, longitude, onChange, height = 260 }: LocationMapPickerProps) {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<L.Map | null>(null);
   const markerRef = useRef<L.Marker | null>(null);
 
-  // Default center if no coordinates: Hanoi center
-  const defaultLat = 21.028511;
-  const defaultLng = 105.854444;
-
   const currentLat = latitude != null && !Number.isNaN(latitude) ? latitude : null;
   const currentLng = longitude != null && !Number.isNaN(longitude) ? longitude : null;
 
+  // [TÍNH NĂNG: Khởi tạo bản đồ Leaflet và bắt sự kiện click chấm tọa độ]
   useEffect(() => {
     if (!mapContainerRef.current) return;
 
     if (!mapInstanceRef.current) {
       const initialCenter: [number, number] = [
-        currentLat ?? defaultLat,
-        currentLng ?? defaultLng,
+        currentLat ?? DEFAULT_LAT,
+        currentLng ?? DEFAULT_LNG,
       ];
-      const initialZoom = currentLat && currentLng ? 16 : 13;
+      const initialZoom = currentLat && currentLng ? ZOOM_WITH_COORDS : DEFAULT_ZOOM;
 
       const map = L.map(mapContainerRef.current, {
         center: initialCenter,
@@ -54,17 +55,15 @@ export function LocationMapPicker({ latitude, longitude, onChange, height = 260 
         attributionControl: false,
       });
 
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      L.tileLayer(TILE_LAYER_URL, {
         maxZoom: 19,
         attribution: '&copy; OpenStreetMap contributors',
       }).addTo(map);
 
-      // Click to pick location
+      // Bắt sự kiện click trên bản đồ để lấy tọa độ
       map.on('click', (event: L.LeafletMouseEvent) => {
         const { lat, lng } = event.latlng;
-        const fixedLat = Number(lat.toFixed(7));
-        const fixedLng = Number(lng.toFixed(7));
-        onChange(fixedLat, fixedLng);
+        onChange(Number(lat.toFixed(7)), Number(lng.toFixed(7)));
       });
 
       mapInstanceRef.current = map;
@@ -79,7 +78,7 @@ export function LocationMapPicker({ latitude, longitude, onChange, height = 260 
     };
   }, []);
 
-  // Update marker position and map center when latitude/longitude props change
+  // [TÍNH NĂNG: Cập nhật vị trí ghim Marker khi tọa độ thay đổi hoặc kéo ghim]
   useEffect(() => {
     const map = mapInstanceRef.current;
     if (!map) return;

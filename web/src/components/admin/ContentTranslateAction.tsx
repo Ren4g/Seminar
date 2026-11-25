@@ -67,7 +67,7 @@ export function ContentTranslateAction({
               Dịch sang: {l.name} ({l.code.toUpperCase()})
               {statusNote}
             </option>
-          );
+          );  
         })}
       </select>
 
