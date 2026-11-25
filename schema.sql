@@ -23,6 +23,16 @@ CREATE TABLE app_user (
 );
 CREATE INDEX idx_app_user_role ON app_user(role_id);
 
+CREATE TABLE password_reset_token (
+    token_id    UUID PRIMARY KEY,
+    user_id     BIGINT NOT NULL REFERENCES app_user(user_id) ON DELETE CASCADE,
+    token_hash  VARCHAR(255) NOT NULL UNIQUE,
+    expires_at  TIMESTAMPTZ NOT NULL,
+    used_at     TIMESTAMPTZ,
+    created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX idx_password_reset_user ON password_reset_token(user_id);
+
 -- ---------------------------------------------------------------------
 -- LANGUAGE
 -- ---------------------------------------------------------------------

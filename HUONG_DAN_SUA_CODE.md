@@ -52,10 +52,11 @@ Seminar/web/src/
 │   │   └── VisitorDetailActions.tsx   # Gợi ý điểm tiếp theo, nút Chia sẻ (Web Share) và Báo lỗi nội dung
 │   │
 │   └── admin/                         # CÁC THÀNH PHẦN GIAO DIỆN QUẢN TRỊ VIÊN
-│       ├── AdminSidebar.tsx           # Thanh menu bên trái (6 tab, đếm bài chờ duyệt, đăng xuất)
+│       ├── AdminSidebar.tsx           # Thanh menu bên trái (6 tab, đếm bài chờ duyệt, đổi mật khẩu, đăng xuất)
 │       ├── AdminTopbar.tsx            # Thanh trên cùng: Breadcrumb, chuông thông báo, nút "+ Tạo nội dung"
+│       ├── ChangePasswordModal.tsx    # Popup Đổi mật khẩu tài khoản đang đăng nhập (UC03)
 │       ├── OverviewPanel.tsx          # Tab Tổng quan: Các thẻ số liệu bài viết, POI, lượt mở QR, khách online
-│       ├── UserPanel.tsx              # Tab Người dùng: Tạo tài khoản, phân quyền, gán địa điểm phụ trách
+│       ├── UserPanel.tsx              # Tab Người dùng: Tạo tài khoản, phân quyền, gán/thu hồi địa điểm, đặt lại MK (UC05)
 │       ├── QrPanel.tsx                # Tab QR code: Chọn POI tạo mã QR, tải ảnh PNG in ấn, mở visitor
 │       ├── LanguageVoicesPanel.tsx    # Tab Ngôn ngữ & Giọng đọc: Điều phối quản trị ngôn ngữ & voices
 │       ├── LanguageCreateForm.tsx     # Form thêm cấu hình ngôn ngữ & voice ElevenLabs
@@ -115,7 +116,9 @@ Seminar/web/src/
 | **Sửa bản đồ chấm tọa độ di tích** | Định vị GPS / Tọa độ | `src/components/admin/LocationCreateForm.tsx` & `LocationEditModal.tsx` | Thẻ `<LocationMapPicker />` |
 | **Sửa chức năng tra cứu Geocoding** | Định vị tự động từ địa chỉ | `src/components/admin/LocationPoiPanel.tsx` | Hàm `triggerGeocode()` |
 | **Sửa kích thước ảnh QR / Tải ảnh PNG** | Tạo mã QR cho di tích | `src/components/admin/QrPanel.tsx` | Thẻ `<QRCodeCanvas size={224} />` và hàm `download()` |
-| **Sửa phân quyền người dùng (Role)** | Quản trị tài khoản | `src/components/admin/UserPanel.tsx` | Thẻ `<select value={form.roleName}>` |
+| **Sửa form đổi mật khẩu tài khoản** | Đổi mật khẩu (UC03) | `src/components/admin/ChangePasswordModal.tsx` | Form `handleSubmit` & API `api.changePassword` |
+| **Sửa form quên / khôi phục mật khẩu** | Khôi phục mật khẩu (UC04) | `src/pages/admin/LoginScreen.tsx` | Các hàm `requestForgotPassword`, `submitResetPassword` |
+| **Sửa phân quyền & quản trị nhân sự nâng cao** | Quản trị tài khoản (UC05) | `src/components/admin/UserPanel.tsx` | Các hàm `handleCreate`, `handleSaveEdit`, `handleAdminResetPassword`, `handleUnassignLocation` |
 | **Sửa chu kỳ tự động làm mới (15s)** | Đồng bộ dữ liệu | `src/hooks/useAdminData.ts` & `useVisitorData.ts` | Biến `AUTO_REFRESH_INTERVAL_MS = 15_000;` |
 | **Sửa chu kỳ đếm khách online (Heartbeat)** | Thống kê thời gian thực | `src/hooks/useVisitorSession.ts` | Biến `HEARTBEAT_INTERVAL_MS = 30_000;` |
 

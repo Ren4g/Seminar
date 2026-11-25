@@ -1,6 +1,16 @@
 export const API_URL = (import.meta.env.VITE_API_URL ?? '/api').replace(/\/$/, '');
 
-export type ApiUser = { id: number; username: string; email: string; role: string; isActive?: boolean };
+export type ApiUser = {
+  id: number;
+  username: string;
+  email: string;
+  role: string;
+  isActive: boolean;
+  failedLoginCount?: number;
+  lockedUntil?: string | null;
+  lastLoginAt?: string | null;
+  assignedLocations?: { locationId: number; name: string }[];
+};
 export type ApiContent = {
   versionId: number;
   poiId: number;
@@ -44,6 +54,12 @@ async function request<T>(path: string, init: RequestInit = {}, token?: string):
 
 export const api = {
   login: (username: string, password: string) => request<{ accessToken: string; user: ApiUser }>('/auth/login', { method: 'POST', body: JSON.stringify({ username, password }) }),
+  changePassword: (token: string, currentPassword: string, newPassword: string) =>
+    request<{ changed: true; message: string }>('/auth/change-password', { method: 'POST', body: JSON.stringify({ currentPassword, newPassword }) }, token),
+  forgotPassword: (email: string) =>
+    request<{ success: true; message: string; resetToken?: string }>('/auth/forgot-password', { method: 'POST', body: JSON.stringify({ email }) }),
+  resetPassword: (token: string, newPassword: string) =>
+    request<{ reset: true; message: string }>('/auth/reset-password', { method: 'POST', body: JSON.stringify({ token, newPassword }) }),
   content: (token: string) => request<ApiContent[]>('/content', {}, token),
   contentHistory: (token: string, versionId: number) => request<ApiReviewEvent[]>(`/content/${versionId}/history`, {}, token),
   voices: (token: string) => request<ApiVoice[]>('/voices', {}, token),
@@ -87,9 +103,18 @@ export const api = {
   deleteContent: (token: string, versionId: number) => request<{ deleted: boolean }>(`/content/${versionId}`, { method: 'DELETE' }, token),
   translateContent: (token: string, versionId: number, targetLanguageCode: string) => request<ApiContent>(`/content/${versionId}/translate`, { method: 'POST', body: JSON.stringify({ targetLanguageCode }) }, token),
   users: (token: string) => request<ApiUser[]>('/users', {}, token),
-  createUser: (token: string, username: string, email: string, password: string, roleName: string) => request<ApiUser>('/users', { method: 'POST', body: JSON.stringify({ username, email, password, roleName }) }, token),
+  createUser: (token: string, username: string, email: string, password: string, roleName: string, locationIds?: number[]) =>
+    request<ApiUser>('/users', { method: 'POST', body: JSON.stringify({ username, email, password, roleName, locationIds }) }, token),
+  updateUser: (token: string, id: number, data: { email?: string; roleName?: string }) =>
+    request<ApiUser>(`/users/${id}`, { method: 'PATCH', body: JSON.stringify(data) }, token),
   setUserActive: (token: string, id: number, isActive: boolean) => request<ApiUser>(`/users/${id}/status`, { method: 'PATCH', body: JSON.stringify({ isActive }) }, token),
+  unlockUser: (token: string, id: number) => request<ApiUser>(`/users/${id}/unlock`, { method: 'POST', body: JSON.stringify({}) }, token),
+  adminResetPassword: (token: string, id: number, newPassword: string) =>
+    request<{ success: true; message: string }>(`/users/${id}/reset-password`, { method: 'POST', body: JSON.stringify({ newPassword }) }, token),
   assignUserLocation: (token: string, userId: number, locationId: number) => request<void>(`/users/${userId}/locations/${locationId}`, { method: 'POST', body: JSON.stringify({}) }, token),
+  unassignUserLocation: (token: string, userId: number, locationId: number) =>
+    request<{ success: true; warning?: string; pendingCount?: number }>(`/users/${userId}/locations/${locationId}`, { method: 'DELETE' }, token),
+  deleteUser: (token: string, id: number) => request<{ deleted: boolean }>(`/users/${id}`, { method: 'DELETE' }, token),
   userLocations: (token: string, userId: number) => request<number[]>(`/users/${userId}/locations`, {}, token),
   setLocationActive: (token: string, id: number, isActive: boolean) => request<ApiLocation>(`/locations/${id}/status`, { method: 'PATCH', body: JSON.stringify({ isActive }) }, token),
   deleteLocation: (token: string, id: number) => request<{ deleted: boolean }>(`/locations/${id}`, { method: 'DELETE' }, token),

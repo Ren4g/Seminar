@@ -1,4 +1,4 @@
-import { IsBoolean, IsEmail, IsIn, IsNotEmpty, IsString, MinLength } from 'class-validator';
+import { IsArray, IsBoolean, IsEmail, IsIn, IsNotEmpty, IsOptional, IsString, MinLength } from 'class-validator';
 
 export class CreateUserDto {
   @IsString()
@@ -14,9 +14,29 @@ export class CreateUserDto {
 
   @IsIn(['ADMIN', 'CONTENT_MANAGER'])
   roleName!: string;
+
+  @IsOptional()
+  @IsArray()
+  locationIds?: number[];
 }
 
 export class UpdateUserStatusDto {
   @IsBoolean()
   isActive!: boolean;
+}
+
+export class UpdateUserDto {
+  @IsOptional()
+  @IsEmail()
+  email?: string;
+
+  @IsOptional()
+  @IsIn(['ADMIN', 'CONTENT_MANAGER'])
+  roleName?: string;
+}
+
+export class AdminResetPasswordDto {
+  @IsString()
+  @MinLength(8)
+  newPassword!: string;
 }

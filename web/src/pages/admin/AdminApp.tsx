@@ -34,6 +34,7 @@ import { ContentWorkflowActions } from '../../components/admin/ContentWorkflowAc
 import { CreateContentModal } from '../../components/admin/CreateContentModal';
 import { ContentHistoryModal } from '../../components/admin/ContentHistoryModal';
 import { VisitorPreviewModal } from '../../components/admin/VisitorPreviewModal';
+import { ChangePasswordModal } from '../../components/admin/ChangePasswordModal';
 
 export function AdminApp() {
   const [token, setToken] = useState(() => localStorage.getItem('audio-guide-token') ?? '');
@@ -42,6 +43,7 @@ export function AdminApp() {
   const [showVisitor, setShowVisitor] = useState(false);
   const [history, setHistory] = useState<ApiReviewEvent[]>([]);
   const [showHistory, setShowHistory] = useState(false);
+  const [showChangePassword, setShowChangePassword] = useState(false);
   const [toast, setToast] = useState('');
   const [showCreate, setShowCreate] = useState(false);
   const [search, setSearch] = useState('');
@@ -179,6 +181,7 @@ export function AdminApp() {
           setShowDetail(false);
         }}
         onToggleSidebar={() => setSidebarCollapsed((v) => !v)}
+        onChangePassword={() => setShowChangePassword(true)}
         onLogout={() => {
           localStorage.removeItem('audio-guide-token');
           setToken('');
@@ -197,10 +200,10 @@ export function AdminApp() {
         />
 
         <section className="workspace">
-          {(!isContentPage || !showDetail) && (
+          {isContentPage && !showDetail && (
             <div className="workspace-heading">
               <div>
-                <h2>Những câu chuyện đang chờ bạn hoàn thiện.</h2>
+                <h2>Nội dung thuyết minh</h2>
               </div>
               <button
                 type="button"
@@ -211,7 +214,7 @@ export function AdminApp() {
                   setToast('Đã xóa bộ lọc.');
                 }}
               >
-                Lọc & sắp xếp <span>⌄</span>
+                Xóa bộ lọc
               </button>
             </div>
           )}
@@ -352,7 +355,7 @@ export function AdminApp() {
           )}
         </section>
 
-        {!isContentPage && (
+        {activeNav === 'Tổng quan' && (
           <section className="insight-strip">
             <div>
               <span className="strip-label">Bước tiếp theo</span>
@@ -382,6 +385,12 @@ export function AdminApp() {
 
       {showVisitor && <VisitorPreviewModal selected={selected} onClose={() => setShowVisitor(false)} />}
       {showHistory && <ContentHistoryModal history={history} onClose={() => setShowHistory(false)} />}
+      <ChangePasswordModal
+        token={token}
+        isOpen={showChangePassword}
+        onClose={() => setShowChangePassword(false)}
+        onToast={(msg) => setToast(msg)}
+      />
       {showCreate && (
         <CreateContentModal
           pois={pois}

@@ -47,9 +47,11 @@ export function AdminTopbar({
         </button>
 
         {/* [TÍNH NĂNG: Nút mở popup tạo nội dung thuyết minh mới] */}
-        <button type="button" className="primary-button" onClick={onOpenCreate}>
-          + Tạo nội dung
-        </button>
+        {activeNav === 'Nội dung' && (
+          <button type="button" className="primary-button" onClick={onOpenCreate}>
+            + Tạo nội dung
+          </button>
+        )}
       </div>
     </header>
   );

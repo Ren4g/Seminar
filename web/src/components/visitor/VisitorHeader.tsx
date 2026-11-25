@@ -65,9 +65,9 @@ export function VisitorHeader({
           className={viewMode === 'map' && !poiId ? 'is-active' : ''}
           onClick={onNavigateMap}
         >
-          🗺️ {copy.map}
+          <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 17s5-5.4 5-9a5 5 0 0 0-10 0c0 3.6 5 9 5 9Z" fill="none" stroke="currentColor" strokeWidth="1.4"/><circle cx="10" cy="8" r="1.7" fill="none" stroke="currentColor" strokeWidth="1.4"/></svg>
+          {copy.map}
         </button>
-        <a href="/admin">Content studio</a>
       </nav>
 
       {/* [TÍNH NĂNG: Hộp chọn ngôn ngữ thuyết minh] */}

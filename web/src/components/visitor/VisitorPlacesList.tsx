@@ -44,7 +44,8 @@ export function VisitorPlacesList({
         </div>
         <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
           <button type="button" className="quiet-button" onClick={onViewMap}>
-            🗺️ {copy.viewMap}
+            <span className="icon" aria-hidden="true">⌖</span>
+            <span>{copy.viewMap}</span>
           </button>
           <span>
             {pois.length} {pois.length === 1 ? copy.poiSingular : copy.poiPlural}
