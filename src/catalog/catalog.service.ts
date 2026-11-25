@@ -1,13 +1,16 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
-import { CreateLanguageDto, CreateLocationDto, CreatePoiDto, CreateQrDto, CreateVoiceDto, UpdateActiveDto } from './catalog.dto';
+import { CreateLanguageDto, CreateLocationDto, CreatePoiDto, CreateQrDto, CreateVoiceDto, UpdateActiveDto, UpdateLocationDto } from './catalog.dto';
 import { CatalogRepository } from './catalog.repository';
+import { GeocodingService } from './geocoding.service';
 
 @Injectable()
 export class CatalogService {
   private readonly repository: CatalogRepository;
+  private readonly geocodingService: GeocodingService;
 
-  constructor(repository: CatalogRepository) {
+  constructor(repository: CatalogRepository, geocodingService: GeocodingService) {
     this.repository = repository;
+    this.geocodingService = geocodingService;
   }
 
   async listLanguages() {
@@ -72,11 +75,81 @@ export class CatalogService {
     return location;
   }
 
+  async geocodeAddress(address: string) {
+    const trimmed = (address ?? '').trim();
+    if (!trimmed) {
+      throw new BadRequestException('Vui lòng nhập địa chỉ để tìm tọa độ');
+    }
+    const result = await this.geocodingService.geocode(trimmed);
+    if (!result) {
+      return { found: false, address: trimmed, message: 'Không tìm thấy tọa độ cho địa chỉ này' };
+    }
+    return { found: true, address: trimmed, ...result };
+  }
+
   async createLocation(dto: CreateLocationDto) {
     try {
-      return this.repository.addLocation(dto.translations);
+      let lat: number | null | undefined = dto.latitude;
+      let lng: number | null | undefined = dto.longitude;
+      const address = dto.address?.trim() || null;
+
+      if (address && (lat == null || lng == null)) {
+        const geo = await this.geocodingService.geocode(address);
+        if (geo) {
+          lat = geo.latitude;
+          lng = geo.longitude;
+        }
+      }
+
+      return await this.repository.addLocation(dto.translations, address, lat ?? null, lng ?? null);
     } catch (error) {
       throw new BadRequestException(error instanceof Error ? error.message : 'Unable to create location');
+    }
+  }
+
+  async updateLocation(id: number, dto: UpdateLocationDto) {
+    const existing = await this.repository.getLocation(id);
+    if (!existing) {
+      throw new NotFoundException(`Location '${id}' was not found`);
+    }
+
+    try {
+      let lat: number | null | undefined = dto.latitude;
+      let lng: number | null | undefined = dto.longitude;
+      const address = dto.address !== undefined ? (dto.address?.trim() || null) : undefined;
+
+      // Nếu địa chỉ thay đổi và không truyền tọa độ chấm tay: Tính lại tọa độ qua Geocoding
+      if (address !== undefined && address !== existing.address && lat === undefined && lng === undefined) {
+        if (address) {
+          const geo = await this.geocodingService.geocode(address);
+          if (geo) {
+            lat = geo.latitude;
+            lng = geo.longitude;
+          } else {
+            lat = null;
+            lng = null;
+          }
+        } else {
+          lat = null;
+          lng = null;
+        }
+      }
+
+      const updated = await this.repository.updateLocation(id, {
+        translations: dto.translations,
+        address,
+        latitude: lat,
+        longitude: lng,
+        isActive: dto.isActive,
+      });
+
+      if (!updated) {
+        throw new NotFoundException(`Location '${id}' was not found`);
+      }
+      return updated;
+    } catch (error) {
+      if (error instanceof NotFoundException) throw error;
+      throw new BadRequestException(error instanceof Error ? error.message : 'Unable to update location');
     }
   }
 

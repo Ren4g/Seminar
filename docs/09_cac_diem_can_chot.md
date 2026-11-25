@@ -1,6 +1,6 @@
 ## 8. Các điểm cần chốt trước khi triển khai code
 
-**[ĐÃ SỬA 16/11]** Ghi nhận 11 điểm kiến trúc/triển khai kỹ thuật còn bỏ ngỏ do tài liệu gốc `dac_ta_use_case_hoan_chinh_v2.docx` chỉ là đặc tả Use Case nghiệp vụ, không quy định chi tiết kỹ thuật. Cần thống nhất trước khi lập trình. (Lý do: làm rõ nguồn gốc và trạng thái các câu hỏi kỹ thuật, mã lỗi D14).
+**[ĐÃ SỬA 16/11]** Ghi nhận 13 điểm kiến trúc/triển khai kỹ thuật còn bỏ ngỏ do tài liệu gốc `dac_ta_use_case_hoan_chinh_v2.docx` chỉ là đặc tả Use Case nghiệp vụ, không quy định chi tiết kỹ thuật. Cần thống nhất trước khi lập trình. (Lý do: làm rõ nguồn gốc và trạng thái các câu hỏi kỹ thuật, mã lỗi D14; bổ sung câu hỏi mở cho tính năng Bản đồ).
 
 Đây là các điểm **đặc tả chưa quyết định đủ**, không nên tự mặc định khi code:
 
@@ -15,6 +15,8 @@
 9. **Audio validation:** tiêu chí "tệp tồn tại và không lỗi thời" là điều kiện xuất bản; kiểm tra codec/duration/checksum/scan file chưa được quy định ngoài định dạng/dung lượng ở UC22.
 10. **Reset password và session:** hạn mã khôi phục, vô hiệu phiên sau khi đổi hoặc reset mật khẩu, chính sách mật khẩu cụ thể chưa nêu. Các con số ở mục 5.2 của đặc tả là giá trị đề xuất.
 11. **Nhà cung cấp dịch và TTS:** chưa chọn, nên giới hạn độ dài, danh sách giọng và chi phí thực tế chưa biết.
+12. **Dữ liệu địa điểm hiện hữu (Batch Geocoding):** Địa điểm đã có sẵn trước khi có bản đồ: có chạy geocoding hàng loạt một lần không, hay để Administrator cập nhật thủ công từng địa điểm?
+13. **Nhà cung cấp dịch vụ bản đồ / Geocoding:** Dịch vụ bản đồ và geocoding sẽ dùng là gì (Google Maps, OpenStreetMap/Leaflet, Mapbox, Goong...)? Lựa chọn này ảnh hưởng trực tiếp đến chi phí, độ chính xác địa chỉ tại Việt Nam và giới hạn hạn ngạch gọi API.
 
 ### Đã chốt trong bản v3 (so với v2)
 

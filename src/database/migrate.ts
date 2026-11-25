@@ -31,6 +31,8 @@ async function migrate(): Promise<void> {
     await pool.query(visitorPresenceMigration);
     const reviewHistoryMigration = await readFile(resolve(__dirname, '../../migrations/003_review_history_mark_reviewed.sql'), 'utf8');
     await pool.query(reviewHistoryMigration);
+    const locationCoordinatesMigration = await readFile(resolve(__dirname, '../../migrations/004_location_coordinates.sql'), 'utf8');
+    await pool.query(locationCoordinatesMigration);
     console.log(`Applied database schema from ${schemaPath}`);
   } finally {
     await pool.end();

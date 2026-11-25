@@ -8,7 +8,7 @@
 | UC04 – Khôi phục mật khẩu | Có | — | USER, ResetToken (hạ tầng) |
 | UC05 – Quản lý tài khoản nhân sự | Có | — | USER, ROLE, USER_LOCATION_ASSIGNMENT, LOCATION |
 | UC06 – Xem danh sách và chi tiết địa điểm | Có | — | LOCATION, LOCATION_TRANSLATION |
-| UC07 – Quản lý địa điểm | Có | — | LOCATION, LOCATION_TRANSLATION |
+| UC07 – Quản lý địa điểm | Có | 5.7 | LOCATION, LOCATION_TRANSLATION |
 | UC08 – Xem danh sách và chi tiết POI | Có | — | POI, POI_TRANSLATION, LOCATION |
 | UC09 – Quản lý POI | Có | — | POI, POI_TRANSLATION, LOCATION |
 | UC10 – Quản lý ngôn ngữ | Có | — | LANGUAGE |
@@ -36,4 +36,5 @@
 | UC32 – Quản lý QR Code cho POI | Có | — | QR_CODE, POI |
 | UC33 – Quét QR Code và truy cập POI | Có | 5.6 | QR_CODE, POI, CONTENT_VERSION, ACTIVITY_EVENT |
 | UC34 – Xem thống kê hoạt động | Có | — | ACTIVITY_EVENT (đề xuất); LOCATION_TRANSLATION, POI_TRANSLATION |
+| UC35 – Xem bản đồ | Có | 5.8 | LOCATION, LOCATION_TRANSLATION |
 

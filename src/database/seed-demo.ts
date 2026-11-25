@@ -40,11 +40,24 @@ async function seedDemo(): Promise<void> {
        WHERE t.language_code = 'en' AND t.name = 'Imperial Citadel' LIMIT 1`,
     );
     if (!location.rows[0]) {
-      location = await client.query<{ id: string }>('INSERT INTO location (is_active) VALUES (TRUE) RETURNING location_id AS id');
+      location = await client.query<{ id: string }>(
+        `INSERT INTO location (address, latitude, longitude, is_active)
+         VALUES ('19C Hoàng Diệu, Quán Thánh, Ba Đình, Hà Nội', 21.0345000, 105.8415000, TRUE)
+         RETURNING location_id AS id`,
+      );
       await client.query(
         `INSERT INTO location_translation (location_id, language_code, name, short_description)
          VALUES ($1, 'en', 'Imperial Citadel', 'Historic audio-guide demo location'),
                 ($1, 'vi', 'Hoàng Thành', 'Địa điểm demo thuyết minh')`,
+        [location.rows[0].id],
+      );
+    } else {
+      await client.query(
+        `UPDATE location
+         SET address = COALESCE(address, '19C Hoàng Diệu, Quán Thánh, Ba Đình, Hà Nội'),
+             latitude = COALESCE(latitude, 21.0345000),
+             longitude = COALESCE(longitude, 105.8415000)
+         WHERE location_id = $1`,
         [location.rows[0].id],
       );
     }

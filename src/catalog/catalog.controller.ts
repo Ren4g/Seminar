@@ -1,5 +1,5 @@
-import { Body, Controller, Delete, Get, Param, ParseIntPipe, Patch, Post, Query } from '@nestjs/common';
-import { CreateLanguageDto, CreateLocationDto, CreatePoiDto, CreateQrDto, CreateVoiceDto, SetDefaultVoiceDto, UpdateActiveDto, UpdateLanguageDto } from './catalog.dto';
+import { Body, Controller, Delete, Get, Param, ParseIntPipe, Patch, Post, Put, Query } from '@nestjs/common';
+import { CreateLanguageDto, CreateLocationDto, CreatePoiDto, CreateQrDto, CreateVoiceDto, SetDefaultVoiceDto, UpdateActiveDto, UpdateLanguageDto, UpdateLocationDto } from './catalog.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { Roles, } from '../auth/roles.decorator';
 import { RolesGuard } from '../auth/roles.guard';
@@ -52,6 +52,13 @@ export class CatalogController {
     return this.service.listLocations();
   }
 
+  @Get('locations/geocode')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN')
+  geocodeLocation(@Query('address') address: string) {
+    return this.service.geocodeAddress(address);
+  }
+
   @Get('locations/:id')
   getLocation(@Param('id', ParseIntPipe) id: number) {
     return this.service.getLocation(id);
@@ -62,6 +69,26 @@ export class CatalogController {
   @Roles('ADMIN')
   createLocation(@Body() dto: CreateLocationDto) {
     return this.service.createLocation(dto);
+  }
+
+  @Patch('locations/:id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN')
+  updateLocation(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: UpdateLocationDto,
+  ) {
+    return this.service.updateLocation(id, dto);
+  }
+
+  @Put('locations/:id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN')
+  replaceLocation(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: UpdateLocationDto,
+  ) {
+    return this.service.updateLocation(id, dto);
   }
 
   @Get('pois')

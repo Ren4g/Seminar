@@ -44,6 +44,9 @@ CREATE UNIQUE INDEX uq_language_single_fallback
 -- ---------------------------------------------------------------------
 CREATE TABLE location (
     location_id  BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    address      VARCHAR(500),
+    latitude     NUMERIC(10, 7),
+    longitude    NUMERIC(10, 7),
     is_active    BOOLEAN NOT NULL DEFAULT TRUE
 );
 

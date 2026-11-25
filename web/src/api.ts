@@ -14,7 +14,14 @@ export type ApiContent = {
 };
 export type ApiVoice = { id: number; languageCode: string; providerVoiceKey: string; isAvailable: boolean };
 export type ApiLanguage = { code: string; name: string; isActive: boolean; isFallback: boolean; defaultVoiceId?: number };
-export type ApiLocation = { id: number; isActive: boolean; translations: { languageCode: string; name: string; shortDescription?: string }[] };
+export type ApiLocation = {
+  id: number;
+  isActive: boolean;
+  address?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
+  translations: { languageCode: string; name: string; shortDescription?: string }[];
+};
 export type ApiPoi = ApiLocation & { locationId: number };
 export type ApiQr = { id: number; poiId: number; targetUrl: string; imagePath?: string; createdAt: string };
 export type ApiReviewEvent = { eventType: string; reason?: string; actedAt: string; actorUserId: number };
@@ -65,7 +72,12 @@ export const api = {
   updateLanguage: (token: string, code: string, name: string) => request<ApiLanguage>(`/languages/${encodeURIComponent(code)}`, { method: 'PATCH', body: JSON.stringify({ name }) }, token),
   deleteLanguage: (token: string, code: string) => request<{ deleted: boolean }>(`/languages/${encodeURIComponent(code)}`, { method: 'DELETE' }, token),
   setLanguageActive: (token: string, code: string, isActive: boolean) => request<ApiLanguage>(`/languages/${encodeURIComponent(code)}/status`, { method: 'PATCH', body: JSON.stringify({ isActive }) }, token),
-  createLocation: (token: string, translations: TranslationInput[]) => request<ApiLocation>('/locations', { method: 'POST', body: JSON.stringify({ translations }) }, token),
+  createLocation: (token: string, translations: TranslationInput[], address?: string, latitude?: number, longitude?: number) =>
+    request<ApiLocation>('/locations', { method: 'POST', body: JSON.stringify({ translations, address, latitude, longitude }) }, token),
+  updateLocation: (token: string, id: number, data: { translations?: TranslationInput[]; address?: string; latitude?: number | null; longitude?: number | null; isActive?: boolean }) =>
+    request<ApiLocation>(`/locations/${id}`, { method: 'PATCH', body: JSON.stringify(data) }, token),
+  geocodeAddress: (token: string, address: string) =>
+    request<{ found: boolean; address: string; latitude?: number; longitude?: number; displayName?: string; message?: string }>(`/locations/geocode?address=${encodeURIComponent(address)}`, {}, token),
   createPoi: (token: string, locationId: number, translations: TranslationInput[]) => request<ApiPoi>(`/locations/${locationId}/pois`, { method: 'POST', body: JSON.stringify({ translations }) }, token),
   createVoice: (token: string, languageCode: string, providerVoiceKey: string) => request<ApiVoice>('/voices', { method: 'POST', body: JSON.stringify({ languageCode, providerVoiceKey }) }, token),
   deleteVoice: (token: string, id: number) => request<{ deleted: boolean }>(`/voices/${id}`, { method: 'DELETE' }, token),

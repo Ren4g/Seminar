@@ -491,3 +491,364 @@ h2 { font-size: clamp(24px, 3vw, 37px); max-width: 620px; line-height: 1.08; let
   .visitor-audio-controls span { font-size: 10px; }
   .visitor-sticky-player { padding-right: 16px; padding-left: 16px; }
 }
+
+
+/* ==========================================================================
+   BẢN ĐỒ & ĐỊNH VỊ (UC07 & UC35)
+   ========================================================================== */
+
+/* Custom Leaflet Marker Pins */
+.custom-map-marker-container {
+  background: transparent;
+  border: none;
+}
+.custom-marker-pin {
+  position: relative;
+  width: 38px;
+  height: 46px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.22));
+  transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+  cursor: pointer;
+}
+.custom-marker-pin:hover {
+  transform: translateY(-4px) scale(1.08);
+}
+.custom-marker-pin .pin-icon {
+  width: 34px;
+  height: 34px;
+  border-radius: 50% 50% 50% 0;
+  transform: rotate(-45deg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid #ffffff;
+  color: #ffffff;
+  z-index: 2;
+}
+.custom-marker-pin .pin-icon svg {
+  transform: rotate(45deg);
+}
+.custom-marker-pin.is-visitor .pin-icon {
+  background: var(--teal);
+}
+.custom-marker-pin.is-picker .pin-icon {
+  background: var(--coral);
+}
+.custom-marker-pin .pin-pulse {
+  position: absolute;
+  bottom: 0;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: rgba(36, 92, 67, 0.4);
+  animation: marker-pulse 2s infinite ease-out;
+  z-index: 1;
+}
+@keyframes marker-pulse {
+  0% { transform: scale(0.6); opacity: 1; }
+  100% { transform: scale(2.2); opacity: 0; }
+}
+
+/* Visitor Map Screen (UC35) */
+.visitor-map-page {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 1240px;
+  margin: 0 auto;
+  padding: 18px 24px 48px;
+}
+.visitor-map-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.visitor-map-info h2 {
+  margin: 0 0 4px;
+  font-family: var(--font-display);
+  font-size: 24px;
+  color: var(--ink);
+}
+.visitor-map-stats {
+  font-size: 13px;
+  color: var(--muted);
+}
+.view-list-btn {
+  font-size: 13px;
+  padding: 8px 16px;
+  border-radius: 999px;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  color: var(--teal);
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.view-list-btn:hover {
+  background: var(--mint);
+  border-color: var(--teal);
+}
+
+.visitor-leaflet-container {
+  width: 100%;
+  height: calc(100vh - 220px);
+  min-height: 520px;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+  z-index: 1;
+}
+
+/* Fallback Card for Map Errors or Empty */
+.visitor-map-fallback {
+  width: 100%;
+  padding: 48px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--paper);
+  border: 1px dashed var(--line);
+  border-radius: var(--radius-lg);
+  margin-bottom: 24px;
+}
+.fallback-card {
+  max-width: 460px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+.fallback-icon {
+  font-size: 42px;
+}
+.fallback-card h3 {
+  margin: 0;
+  font-size: 18px;
+  color: var(--ink);
+}
+.fallback-card p {
+  margin: 0 0 8px;
+  font-size: 14px;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+/* Leaflet Custom Popups */
+.custom-leaflet-popup .leaflet-popup-content-wrapper {
+  border-radius: 14px;
+  padding: 6px 4px;
+  box-shadow: 0 12px 32px rgba(27, 44, 32, 0.18);
+  border: 1px solid var(--line);
+}
+.custom-leaflet-popup .leaflet-popup-tip {
+  box-shadow: 0 6px 16px rgba(27, 44, 32, 0.12);
+}
+.visitor-map-popup {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  color: var(--ink);
+  font-family: var(--font-body);
+}
+.popup-title {
+  margin: 0 0 2px;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--teal);
+  line-height: 1.25;
+}
+.popup-address {
+  margin: 0;
+  font-size: 12px;
+  color: var(--muted);
+  display: flex;
+  align-items: flex-start;
+  gap: 4px;
+  line-height: 1.4;
+}
+.popup-desc {
+  margin: 2px 0 6px;
+  font-size: 13px;
+  color: var(--body-copy);
+  line-height: 1.45;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.popup-pois-section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-top: 8px;
+  border-top: 1px solid var(--line);
+}
+.popup-pois-heading {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+}
+.popup-listen-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+  padding: 9px 12px;
+  background: var(--teal);
+  color: #ffffff;
+  border: none;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: none;
+  transition: background 0.15s ease;
+}
+.popup-listen-btn:hover {
+  background: #1b4733;
+}
+.popup-listen-btn strong {
+  max-width: 140px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.popup-poi-sublist {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 4px;
+}
+.popup-subpoi-btn {
+  display: block;
+  text-align: left;
+  background: var(--cream);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 5px 8px;
+  font-size: 11px;
+  color: var(--ink);
+  cursor: pointer;
+  transition: background 0.15s ease;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.popup-subpoi-btn:hover {
+  background: var(--mint);
+  border-color: var(--teal);
+}
+.popup-empty-notice {
+  margin: 0;
+  font-size: 12px;
+  color: var(--muted);
+  font-style: italic;
+}
+
+/* Admin Location Picker (UC07) */
+.location-picker-wrapper {
+  margin: 10px 0 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.location-picker-map {
+  border: 1px solid var(--line);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  background: #e5e3df;
+}
+.picker-map-hint {
+  font-size: 11px;
+  color: var(--muted);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.geocode-actions-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: -6px;
+  margin-bottom: 8px;
+  flex-wrap: wrap;
+}
+.geocode-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  font-size: 12px;
+  font-weight: 600;
+  border-radius: 6px;
+  background: var(--paper);
+  border: 1px solid var(--teal);
+  color: var(--teal);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.geocode-btn:hover:not(:disabled) {
+  background: var(--mint);
+}
+.geocode-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.geocode-status {
+  font-size: 12px;
+  color: var(--muted);
+}
+.geocode-status.is-success {
+  color: var(--published);
+  font-weight: 500;
+}
+.geocode-status.is-error {
+  color: var(--coral);
+}
+.coords-display-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+.coords-display-row input {
+  font-family: monospace;
+  font-size: 12px;
+}
+.location-badge-has-coords {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  color: var(--teal);
+  background: var(--mint);
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-weight: 500;
+}
+.location-badge-no-coords {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  color: var(--muted);
+  background: var(--cream);
+  padding: 2px 8px;
+  border-radius: 999px;
+}
+.location-edit-modal-card {
+  max-width: 620px;
+  width: 90%;
+  max-height: 90vh;
+  overflow-y: auto;
+}

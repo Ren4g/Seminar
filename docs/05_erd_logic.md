@@ -53,6 +53,9 @@ erDiagram
     }
     LOCATION {
       bigint location_id PK
+      string address "nullable"
+      decimal latitude "Vĩ độ, nullable"
+      decimal longitude "Kinh độ, nullable"
       boolean is_active
     }
     LOCATION_TRANSLATION {
@@ -157,6 +160,7 @@ erDiagram
 - `AUDIO`: unique `version_id`, mỗi version một bản ghi audio. Version mới kế thừa audio bằng bản ghi mới trỏ cùng `file_path`; tệp chỉ bị xóa khi không còn bản ghi nào tham chiếu. Cờ lỗi thời chỉ nằm ở `AUDIO.is_outdated` để tránh hai nguồn sự thật.
 - `AUDIO.voice_id` chỉ có giá trị khi `source_type = TTS`; audio tải lên không có voice.
 - `LOCATION_TRANSLATION` và `POI_TRANSLATION`: khóa chính theo cặp (đối tượng, ngôn ngữ); bắt buộc có bản tiếng Anh theo quy tắc nghiệp vụ.
+- `LOCATION`: lưu `address`, `latitude` (vĩ độ) và `longitude` (kinh độ), cho phép rỗng (NULL). Địa điểm chưa có tọa độ sẽ không xuất hiện trên bản đồ (UC35) nhưng vẫn xuất hiện bình thường trong danh sách địa điểm (UC06, UC25). Tọa độ được tự động cập nhật qua geocoding khi nhập/sửa địa chỉ hoặc do Administrator chấm tay vị trí (UC07).
 - `LANGUAGE`: đúng một ngôn ngữ có `is_fallback = true` (English), luôn `is_active`.
 - `LANGUAGE_DEFAULT_VOICE`: tối đa một voice mặc định cho mỗi ngôn ngữ; voice phải thuộc đúng ngôn ngữ.
 - `USER_LOCATION_ASSIGNMENT`: khóa chính `(user_id, location_id)`.

@@ -216,3 +216,77 @@ sequenceDiagram
     end
 ```
 
+### 5.7. UC07 – Administrator thêm/sửa địa điểm và Geocoding tọa độ
+
+```mermaid
+sequenceDiagram
+    actor Admin as Administrator
+    participant UI as Admin Web
+    participant API as Backend
+    participant Geo as Geocoding API
+    participant DB as Database
+
+    Admin->>UI: Nhập thông tin địa điểm và địa chỉ
+    UI->>API: Tạo mới / cập nhật địa điểm (kèm địa chỉ)
+    API->>API: Kiểm tra quyền Admin và hợp lệ dữ liệu
+    alt Có địa chỉ cần xác định tọa độ
+        API->>Geo: Gửi địa chỉ (Geocode request)
+        alt Geocoding thành công
+            Geo-->>API: Trả về tọa độ (latitude, longitude)
+            API->>DB: Lưu địa điểm cùng tọa độ
+            DB-->>API: Lưu thành công
+            API-->>UI: Lưu thành công (tự động xuất hiện trên bản đồ)
+        else Geocoding thất bại hoặc sai vị trí
+            Geo-->>API: Không tìm thấy / lỗi dịch vụ
+            API-->>UI: Báo lỗi vị trí cho Admin
+            alt Admin sửa lại địa chỉ
+                Admin->>UI: Nhập lại địa chỉ chính xác
+                UI->>API: Gửi lại yêu cầu geocoding
+            else Admin chấm tay trên bản đồ
+                Admin->>UI: Chấm chọn vị trí trực tiếp trên bản đồ
+                UI->>API: Lưu địa điểm với tọa độ đã chấm tay
+                API->>DB: Lưu địa điểm cùng tọa độ
+                DB-->>API: Lưu thành công
+                API-->>UI: Lưu thành công
+            end
+        end
+    else Không có thay đổi địa chỉ
+        API->>DB: Cập nhật thông tin khác
+        DB-->>API: Lưu thành công
+        API-->>UI: Cập nhật thành công
+    end
+```
+
+### 5.8. UC35 – Visitor xem bản đồ các điểm du lịch và điều hướng
+
+```mermaid
+sequenceDiagram
+    actor V as Visitor
+    participant Web as Visitor Web
+    participant Map as Map Provider SDK/Tiles
+    participant API as Backend
+    participant DB as Database
+
+    V->>Web: Mở trang Bản đồ
+    par Tải bản đồ nền
+        Web->>Map: Yêu cầu tải lớp bản đồ (Map Tiles/SDK)
+        alt Lỗi tải bản đồ
+            Map-->>Web: Lỗi kết nối / dịch vụ bản đồ
+            Web-->>V: Báo lỗi bản đồ, hiển thị danh sách địa điểm thay thế
+        else Tải bản đồ thành công
+            Map-->>Web: Lớp bản đồ số
+        end
+    and Tải danh sách địa điểm có tọa độ
+        Web->>API: Lấy danh sách địa điểm hoạt động
+        API->>DB: Truy vấn địa điểm có (latitude, longitude IS NOT NULL AND is_active = TRUE)
+        DB-->>API: Danh sách địa điểm có tọa độ
+        API-->>Web: Trả về danh sách (kèm tên, ảnh, tọa độ)
+    end
+    Web->>Web: Vẽ các Marker lên bản đồ tương ứng tọa độ
+    V->>Web: Bấm vào một Marker
+    Web->>Web: Hiển thị Popup (Tên, Ảnh đại diện, Nút "Nghe thuyết minh")
+    V->>Web: Bấm nút "Nghe thuyết minh"
+    Web->>Web: Chuyển hướng sang trang chi tiết địa điểm (UC25/UC26)
+```
+
+

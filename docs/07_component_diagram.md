@@ -31,6 +31,7 @@ flowchart TB
     subgraph External["External Services"]
       MT["Translation Provider API"]
       TTS["TTS Provider API"]
+      MapService["Map & Geocoding Provider API"]
     end
 
     AdminUI --> Auth
@@ -61,6 +62,9 @@ flowchart TB
     Analytics --> Catalog
     Translation --> MT
     Audio --> TTS
+    Catalog --> MapService
+    VisitorUI --> MapService
+    AdminUI --> MapService
 ```
 
 > Đây là **component decomposition đề xuất** từ trách nhiệm nghiệp vụ, không phải cấu trúc code/framework đã được đặc tả. Mọi ghi nhận sự kiện của Visitor đi qua Backend (Analytics), không ghi thẳng vào tầng dữ liệu. Có thể triển khai các service này thành module trong một modular monolith; không có căn cứ bắt buộc phải tách microservices. Kiểm tra quyền (Auth) áp dụng cho mọi lời gọi quản trị.

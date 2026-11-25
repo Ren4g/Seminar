@@ -15,6 +15,9 @@ export type Translation = {
 export type Location = {
   id: number;
   isActive: boolean;
+  address?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
   translations: Translation[];
 };
 

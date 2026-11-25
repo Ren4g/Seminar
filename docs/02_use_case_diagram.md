@@ -9,6 +9,7 @@ actor "Content Manager" as CM
 actor Visitor
 actor "Dịch vụ dịch tự động" as MT
 actor "Dịch vụ TTS" as TTS
+actor "Dịch vụ bản đồ & Geocoding" as MapService
 
 rectangle "Hệ thống thuyết minh tự động đa ngôn ngữ" {
 
@@ -46,6 +47,7 @@ rectangle "Hệ thống thuyết minh tự động đa ngôn ngữ" {
   usecase "UC32 - Quản lý QR Code cho POI" as U32
   usecase "UC33 - Quét QR Code và truy cập POI" as U33
   usecase "UC34 - Xem thống kê hoạt động" as U34
+  usecase "UC35 - Xem bản đồ" as U35
 }
 Admin -- U01
 CM -- U01
@@ -100,6 +102,10 @@ Admin -- U32
 CM -- U32
 Visitor -- U33
 Admin -- U34
+Visitor -- U35
+Admin -- U35
+MapService -- U07
+MapService -- U35
 ' U19 .> U20 : <<extend>>
 @enduml
 ```
@@ -109,4 +115,6 @@ Admin -- U34
 
 ~~> Chỉ vẽ một quan hệ `extend`: UC19 → UC20, vì UC20 bước 3 mô tả việc đổi giọng đọc (UC19) là bước tùy chọn, và bắt buộc khi ngôn ngữ chưa có giọng mặc định. Không vẽ `include`/`extend` khác vì đặc tả chỉ mô tả các UC liên quan và điều hướng nghiệp vụ. Không gán MT/TTS vào các UC khác ngoài UC17/UC20.~~
 **[ĐÃ SỬA 16/11] (loại bỏ vì tài liệu gốc không có, mã D1)**
+
+> **Ghi chú bổ sung UC35 (Tính năng Bản đồ):** Visitor và Administrator đều có quyền xem bản đồ; Administrator không có use case riêng ("Admin xem bản đồ giống người dùng"). UC07 tương tác với Dịch vụ Geocoding để tự động chuyển đổi địa chỉ thành tọa độ địa lý (vĩ độ, kinh độ) khi thêm mới hoặc sửa địa chỉ địa điểm; UC35 tương tác với Dịch vụ bản đồ để hiển thị lớp bản đồ và các marker địa điểm.
 

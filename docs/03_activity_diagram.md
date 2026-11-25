@@ -1,4 +1,4 @@
-## 2. Activity Diagram – 34 sơ đồ độc lập
+## 2. Activity Diagram – 35 sơ đồ độc lập
 
 
 ### UC01 – Đăng nhập
@@ -148,23 +148,33 @@ flowchart TD
  A --> B[Hiển thị danh sách]
  B --> C[Chọn thao tác]
  C --> D{Thao tác}
- D -- Thêm --> E[Nhập tên và mô tả theo ngôn ngữ]
- D -- Cập nhật --> F[Cập nhật thông tin đa ngôn ngữ]
+ D -- Thêm --> E[Nhập tên, mô tả theo ngôn ngữ và địa chỉ]
+ D -- Cập nhật --> F[Cập nhật thông tin đa ngôn ngữ / địa chỉ]
  D -- Đổi trạng thái --> H[Chọn hoạt động hoặc ngừng hoạt động]
  D -- Xóa --> G[Yêu cầu xóa địa điểm]
  E --> I{Hợp lệ và có tên tiếng Anh?}
  I -- Không --> E
- I -- Có --> Q[Xác nhận và lưu thay đổi]
+ I -- Có --> GC[Gọi dịch vụ Geocoding đổi địa chỉ thành tọa độ]
  F --> I2{Hợp lệ và có tên tiếng Anh?}
  I2 -- Không --> F
- I2 -- Có --> Q
+ I2 -- Có --> CHK_ADDR{Có thay đổi địa chỉ?}
+ CHK_ADDR -- Có --> GC
+ CHK_ADDR -- Không --> Q[Xác nhận và lưu thay đổi]
+ GC --> RES{Geocoding tìm ra và đúng vị trí?}
+ RES -- Thành công --> Q
+ RES -- Không tìm ra hoặc sai vị trí --> WARN[Báo Administrator lỗi vị trí]
+ WARN --> FIX{Lựa chọn xử lý}
+ FIX -- Sửa địa chỉ --> E
+ FIX -- Chấm tay trên bản đồ --> PIN[Chấm tay vị trí trên bản đồ để lấy tọa độ] --> Q
  H --> Q
  G --> J{Đang chứa POI?}
  J -- Có --> K[Từ chối xóa; đề xuất ngừng hoạt động] --> Z((Kết thúc))
  J -- Không --> L[Xác nhận xóa] --> M[Xóa địa điểm] --> N[Thông báo kết quả]
- Q --> N
+ Q --> AUTO[Lưu địa điểm & tọa độ; tự động hiển thị trên bản đồ nếu có tọa độ] --> N
  N --> Z
 ```
+
+> **Ghi chú nghiệp vụ Bản đồ trong UC07:** Khi thêm địa điểm hoặc khi sửa đổi địa chỉ, hệ thống tự động gọi dịch vụ geocoding để chuyển đổi địa chỉ thành tọa độ (vĩ độ, kinh độ). Nếu geocoding thất bại hoặc ra sai vị trí, hệ thống báo cho Administrator, cho phép sửa lại địa chỉ hoặc chấm tay vị trí trực tiếp trên bản đồ. Địa điểm sau khi tạo thành công có tọa độ sẽ tự động xuất hiện trên bản đồ mà không cần thao tác thêm.
 
 ~~G --> J{Đang chứa POI hoặc có dữ liệu liên quan?}~~
 **[ĐÃ SỬA 16/11] (loại bỏ vì tài liệu gốc không có, mã D3)** `G --> J{Đang chứa POI?}` (Lý do: Mục 4.3.1 của UC07 chỉ quy định "Địa điểm đang chứa POI", không có quy định "hoặc có dữ liệu liên quan", mã lỗi D3)
@@ -878,4 +888,33 @@ flowchart TD
  N --> Z((Kết thúc))
  J -. Không tải được .-> O[Thông báo lỗi thống kê] --> Z
 ```
+
+### UC35 – Xem bản đồ
+
+```mermaid
+flowchart TD
+ S((Bắt đầu)) --> A[Người dùng mở trang bản đồ]
+ A --> B{Bản đồ tải thành công?}
+ B -- Không tải được --> C[Thông báo lỗi tải bản đồ]
+ C --> D[Cho phép người dùng xem danh sách địa điểm] --> Z((Kết thúc))
+ B -- Thành công --> E[Hệ thống tải danh sách địa điểm]
+ E --> F[Lọc danh sách địa điểm có tọa độ và đang hoạt động]
+ F -. Địa điểm chưa có tọa độ .-> G[Không hiện trên bản đồ; vẫn hiện ở danh sách]
+ F --> H[Hiển thị marker của các địa điểm lên bản đồ]
+ H --> I[Người dùng bấm vào một marker]
+ I --> J[Hiển thị popup: tên, ảnh đại diện, nút 'Nghe thuyết minh']
+ J --> K[Người dùng bấm nút 'Nghe thuyết minh']
+ K --> L[Chuyển hướng đến trang chi tiết địa điểm]
+ L --> Z
+```
+
+> **Ghi chú nghiệp vụ UC35:**
+> - **Actor:** Người dùng (Khách tham quan / Visitor; Administrator xem bản đồ giống người dùng).
+> - **Tiền điều kiện:** Hệ thống đã có ít nhất một địa điểm có tọa độ.
+> - **Luồng chính:** Người dùng mở trang bản đồ → Hệ thống tải danh sách địa điểm có tọa độ → Hiển thị marker trên bản đồ → Người dùng bấm marker → Hiện popup gồm tên, ảnh đại diện và nút "Nghe thuyết minh" dẫn tới trang chi tiết địa điểm.
+> - **Luồng ngoại lệ:**
+>   + Địa điểm chưa có tọa độ: Không hiện trên bản đồ, vẫn hiện bình thường ở danh sách địa điểm.
+>   + Không tải được bản đồ: Báo lỗi và vẫn cho người dùng xem danh sách địa điểm.
+> - **Phân quyền:** Administrator không có use case riêng ("Admin xem bản đồ giống người dùng").
+
 
