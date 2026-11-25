@@ -12,11 +12,12 @@
 
 import { useState, type FormEvent } from 'react';
 import { api, type ApiLocation } from '../../api';
-import { LocationMapPicker } from '../../LocationMapPicker';
+import { LocationMapPicker, type ExistingLocationPin } from '../../LocationMapPicker';
 
 type LocationEditModalProps = {
   token: string;
   editingLocation: ApiLocation;
+  existingLocations?: ExistingLocationPin[];
   onClose: () => void;
   onSuccess: () => void;
   onToast: (msg: string) => void;
@@ -26,6 +27,7 @@ type LocationEditModalProps = {
 export function LocationEditModal({
   token,
   editingLocation,
+  existingLocations,
   onClose,
   onSuccess,
   onToast,
@@ -201,6 +203,8 @@ export function LocationEditModal({
           <LocationMapPicker
             latitude={editForm.latitude}
             longitude={editForm.longitude}
+            existingLocations={existingLocations}
+            excludeId={editingLocation.id}
             onChange={(lat, lng) => setEditForm((prev) => ({ ...prev, latitude: lat, longitude: lng }))}
             height={240}
           />

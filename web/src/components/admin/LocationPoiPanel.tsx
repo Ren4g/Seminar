@@ -183,6 +183,18 @@ export function LocationPoiPanel({ token, onToast, onPoisChange }: LocationPoiPa
     }
   };
 
+  // [TÍNH NĂNG: Danh sách địa điểm đã có để hiển thị ghim tham chiếu trên bản đồ]
+  const existingLocationPins = locations.map((loc) => ({
+    id: loc.id,
+    name:
+      loc.translations.find((t) => t.languageCode === 'vi')?.name ||
+      loc.translations.find((t) => t.languageCode === 'en')?.name ||
+      `Địa điểm #${loc.id}`,
+    address: loc.address,
+    latitude: loc.latitude,
+    longitude: loc.longitude,
+  }));
+
   return (
     <section className="catalog-panel">
       <div className="catalog-heading">
@@ -216,6 +228,7 @@ export function LocationPoiPanel({ token, onToast, onPoisChange }: LocationPoiPa
             form={form}
             geocodingBusy={geocodingBusy}
             geocodingStatus={geocodingStatus}
+            existingLocations={existingLocationPins}
             onChange={(fields) => setForm((prev) => ({ ...prev, ...fields }))}
             onTriggerGeocode={triggerGeocode}
           />
@@ -258,6 +271,7 @@ export function LocationPoiPanel({ token, onToast, onPoisChange }: LocationPoiPa
         <LocationEditModal
           token={token}
           editingLocation={editingLocation}
+          existingLocations={existingLocationPins}
           onClose={() => setEditingLocation(null)}
           onSuccess={reload}
           onToast={onToast}

@@ -9,7 +9,7 @@
  *  - Bản đồ chấm tọa độ: Thẻ `<LocationMapPicker />`.
  */
 
-import { LocationMapPicker } from '../../LocationMapPicker';
+import { LocationMapPicker, type ExistingLocationPin } from '../../LocationMapPicker';
 
 type LocationCreateFormProps = {
   form: {
@@ -21,6 +21,7 @@ type LocationCreateFormProps = {
   };
   geocodingBusy: boolean;
   geocodingStatus: { type: 'success' | 'error' | 'idle'; text: string };
+  existingLocations?: ExistingLocationPin[];
   onChange: (fields: Partial<LocationCreateFormProps['form']>) => void;
   onTriggerGeocode: () => void;
 };
@@ -30,6 +31,7 @@ export function LocationCreateForm({
   form,
   geocodingBusy,
   geocodingStatus,
+  existingLocations,
   onChange,
   onTriggerGeocode,
 }: LocationCreateFormProps) {
@@ -103,6 +105,7 @@ export function LocationCreateForm({
           <LocationMapPicker
             latitude={form.latitude}
             longitude={form.longitude}
+            existingLocations={existingLocations}
             onChange={(lat, lng) => onChange({ latitude: lat, longitude: lng })}
             height={220}
           />
