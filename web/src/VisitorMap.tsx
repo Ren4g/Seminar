@@ -36,6 +36,8 @@ export function VisitorMap({
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<L.Map | null>(null);
   const markersLayerRef = useRef<L.LayerGroup | null>(null);
+  const hasFittedBoundsRef = useRef(false);
+  const lastSignatureRef = useRef('');
   const [mapError, setMapError] = useState<string | null>(null);
 
   const activeLocationsWithCoords = locations.filter(
@@ -98,8 +100,22 @@ export function VisitorMap({
     const markersLayer = markersLayerRef.current;
     if (!map || !markersLayer) return;
 
-    markersLayer.clearLayers();
     if (activeLocationsWithCoords.length === 0) return;
+
+    // Tạo chữ ký dữ liệu để kiểm tra xem dữ liệu thực sự có thay đổi không
+    const currentSignature =
+      activeLocationsWithCoords.map((l) => `${l.id}-${l.latitude}-${l.longitude}`).join(',') +
+      '|' +
+      pois.map((p) => `${p.id}-${p.locationId}-${p.isActive}`).join(',') +
+      '|' +
+      language;
+
+    // Nếu dữ liệu không thay đổi và đã căn khung hình rồi thì bỏ qua, giữ nguyên góc nhìn và popup của khách
+    if (lastSignatureRef.current === currentSignature && hasFittedBoundsRef.current) {
+      return;
+    }
+
+    markersLayer.clearLayers();
 
     const bounds = L.latLngBounds([]);
 
@@ -114,11 +130,18 @@ export function VisitorMap({
       markersLayer.addLayer(marker);
     });
 
-    if (activeLocationsWithCoords.length === 1) {
-      const loc = activeLocationsWithCoords[0];
-      map.setView([Number(loc.latitude), Number(loc.longitude)], 15);
-    } else if (bounds.isValid()) {
-      map.fitBounds(bounds, { padding: [50, 50], maxZoom: 16 });
+    lastSignatureRef.current = currentSignature;
+
+    // [TÍNH NĂNG: Chỉ căn khung hình (fitBounds) đúng 1 lần đầu khi mở bản đồ, tránh bị giật/thu nhỏ lại khi polling API]
+    if (!hasFittedBoundsRef.current) {
+      if (activeLocationsWithCoords.length === 1) {
+        const loc = activeLocationsWithCoords[0];
+        map.setView([Number(loc.latitude), Number(loc.longitude)], 15);
+        hasFittedBoundsRef.current = true;
+      } else if (bounds.isValid()) {
+        map.fitBounds(bounds, { padding: [50, 50], maxZoom: 16 });
+        hasFittedBoundsRef.current = true;
+      }
     }
   }, [activeLocationsWithCoords.length, language, pois]);
 

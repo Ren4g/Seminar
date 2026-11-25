@@ -17,9 +17,9 @@ export const MAP_CONFIG = {
   SUBDOMAINS: 'abc',
   ATTRIBUTION: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, Tiles style by <a href="https://www.hotosm.org/">HOT</a>',
 
-  // Tọa độ trung tâm mặc định (Thủ đô Hà Nội)
-  DEFAULT_CENTER_LAT: 21.028511,
-  DEFAULT_CENTER_LNG: 105.854444,
+// Tọa độ trung tâm mặc định (TP. Hồ Chí Minh - Quận 1)
+  DEFAULT_CENTER_LAT: 10.776889,
+  DEFAULT_CENTER_LNG: 106.700806,
 
   // Mức phóng to mặc định
   DEFAULT_ZOOM: 13,
