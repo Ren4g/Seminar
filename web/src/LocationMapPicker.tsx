@@ -5,22 +5,14 @@
  * @activityDiagram Bước "UC07 - Quản lý địa điểm: Thiết lập và hiệu chỉnh tọa độ địa lý di tích".
  * 
  * @customization Điểm cấu hình & Tùy biến nhanh:
- *  - Tọa độ trung tâm mặc định (Hà Nội): Biến `DEFAULT_LAT`, `DEFAULT_LNG` bên dưới.
- *  - Mức phóng to (Zoom): Biến `DEFAULT_ZOOM`, `ZOOM_WITH_COORDS`.
- *  - Nhà cung cấp bản đồ nền (Tile Server): Biến `TILE_LAYER_URL`.
+ *  - Cấu hình bản đồ nền và tọa độ: Chỉnh sửa tại `constants/mapConfig.ts`.
  */
 
 import { useEffect, useRef } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { pickerIcon } from './utils/mapIcons';
-
-// ==================== CẤU HÌNH BẢN ĐỒ CHẤM TỌA ĐỘ ====================
-const DEFAULT_LAT = 21.028511; // Tọa độ trung tâm mặc định (Hà Nội)
-const DEFAULT_LNG = 105.854444;
-const DEFAULT_ZOOM = 13;
-const ZOOM_WITH_COORDS = 16;
-const TILE_LAYER_URL = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
+import { MAP_CONFIG } from './constants/mapConfig';
 
 interface LocationMapPickerProps {
   latitude: number | null | undefined;
@@ -44,10 +36,10 @@ export function LocationMapPicker({ latitude, longitude, onChange, height = 260 
 
     if (!mapInstanceRef.current) {
       const initialCenter: [number, number] = [
-        currentLat ?? DEFAULT_LAT,
-        currentLng ?? DEFAULT_LNG,
+        currentLat ?? MAP_CONFIG.DEFAULT_CENTER_LAT,
+        currentLng ?? MAP_CONFIG.DEFAULT_CENTER_LNG,
       ];
-      const initialZoom = currentLat && currentLng ? ZOOM_WITH_COORDS : DEFAULT_ZOOM;
+      const initialZoom = currentLat && currentLng ? MAP_CONFIG.ZOOM_WITH_COORDS : MAP_CONFIG.DEFAULT_ZOOM;
 
       const map = L.map(mapContainerRef.current, {
         center: initialCenter,
@@ -55,9 +47,10 @@ export function LocationMapPicker({ latitude, longitude, onChange, height = 260 
         attributionControl: false,
       });
 
-      L.tileLayer(TILE_LAYER_URL, {
-        maxZoom: 19,
-        attribution: '&copy; OpenStreetMap contributors',
+      L.tileLayer(MAP_CONFIG.TILE_LAYER_URL, {
+        maxZoom: MAP_CONFIG.MAX_ZOOM,
+        subdomains: MAP_CONFIG.SUBDOMAINS,
+        attribution: MAP_CONFIG.ATTRIBUTION,
       }).addTo(map);
 
       // Bắt sự kiện click trên bản đồ để lấy tọa độ

@@ -5,9 +5,7 @@
  * @activityDiagram Bước "UC35 - Xem bản đồ: Khách tham quan khám phá di tích trên bản đồ tương tác".
  * 
  * @customization Điểm cấu hình & Tùy biến nhanh:
- *  - Tọa độ trung tâm mặc định: Biến `DEFAULT_CENTER_LAT`, `DEFAULT_CENTER_LNG`.
- *  - Mức zoom ban đầu: Biến `DEFAULT_ZOOM`.
- *  - URL bản đồ nền: Biến `TILE_LAYER_URL`.
+ *  - Cấu hình bản đồ nền và tọa độ: Chỉnh sửa tại `constants/mapConfig.ts`.
  */
 
 import { useEffect, useRef, useState } from 'react';
@@ -15,14 +13,9 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import type { ApiLocation, ApiPoi } from './api';
 import { visitorMarkerIcon } from './utils/mapIcons';
+import { MAP_CONFIG } from './constants/mapConfig';
 import { VisitorMapToolbar } from './components/visitor/VisitorMapToolbar';
 import { createVisitorMapPopup } from './components/visitor/VisitorMapPopup';
-
-// ==================== CẤU HÌNH BẢN ĐỒ DU LỊCH ====================
-const DEFAULT_CENTER_LAT = 21.028511; // Hà Nội
-const DEFAULT_CENTER_LNG = 105.854444;
-const DEFAULT_ZOOM = 13;
-const TILE_LAYER_URL = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
 
 interface VisitorMapProps {
   locations: ApiLocation[];
@@ -58,20 +51,26 @@ export function VisitorMap({
 
     try {
       if (!mapInstanceRef.current) {
-        const defaultCenter: [number, number] = [DEFAULT_CENTER_LAT, DEFAULT_CENTER_LNG];
+        const defaultCenter: [number, number] = [
+          MAP_CONFIG.DEFAULT_CENTER_LAT,
+          MAP_CONFIG.DEFAULT_CENTER_LNG,
+        ];
         const map = L.map(mapContainerRef.current, {
           center: defaultCenter,
-          zoom: DEFAULT_ZOOM,
+          zoom: MAP_CONFIG.DEFAULT_ZOOM,
           attributionControl: true,
         });
 
-        const tileLayer = L.tileLayer(TILE_LAYER_URL, {
-          maxZoom: 19,
-          attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+        // Sử dụng TileLayer CartoDB Voyager tốc độ cao, không bị chặn bởi các nhà mạng tại VN
+        const tileLayer = L.tileLayer(MAP_CONFIG.TILE_LAYER_URL, {
+          maxZoom: MAP_CONFIG.MAX_ZOOM,
+          subdomains: MAP_CONFIG.SUBDOMAINS,
+          attribution: MAP_CONFIG.ATTRIBUTION,
         });
 
         tileLayer.on('tileerror', () => {
-          setMapError('Không thể tải các mảnh bản đồ số (tile error). Vui lòng kiểm tra kết nối mạng.');
+          // Ghi nhận cảnh báo nếu 1 vài mảnh tile mạng chậm, không ẩn toàn bộ bản đồ
+          console.warn('Lưu ý: Không thể tải một số mảnh tile bản đồ.');
         });
 
         tileLayer.addTo(map);
